@@ -12,7 +12,7 @@ export function FeedPanel() {
   const latestTimestamp = useFeedStore((s) => s.latestTimestamp);
 
   // Initial fetch
-  const { data } = useTweets();
+  const { data, isLoading } = useTweets();
 
   useEffect(() => {
     if (data?.tweets) {
@@ -37,7 +37,7 @@ export function FeedPanel() {
         </h2>
       </div>
       <NewTweetsBanner />
-      <TweetList />
+      <TweetList isLoading={isLoading} />
     </aside>
   );
 }

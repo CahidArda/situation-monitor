@@ -24,7 +24,7 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
     <article className="border-b border-border px-4 py-3 hover:bg-card/50 transition-colors">
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 text-sm">
+          <div className="flex items-center gap-1.5 text-base">
             <span className="font-semibold text-foreground truncate">
               {tweet.authorDisplayName}
             </span>
@@ -32,22 +32,22 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
               {tweet.authorHandle}
             </span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground text-xs whitespace-nowrap">
+            <span className="text-muted-foreground text-sm whitespace-nowrap">
               {timeAgo(tweet.timestamp)}
             </span>
           </div>
 
-          <p className="mt-1 text-sm text-foreground whitespace-pre-wrap break-words">
+          <p className="mt-1 text-base text-foreground whitespace-pre-wrap wrap-break-word">
             {tweet.content}
           </p>
 
           {tweet.newsLink && (
-            <div className="mt-2 rounded border border-border bg-card p-2 text-xs text-muted-foreground">
+            <div className="mt-2 rounded border border-border bg-card p-2 text-sm text-muted-foreground">
               📰 {tweet.newsLink.headline}
             </div>
           )}
 
-          <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
             <button
               onClick={() => toggleLike(tweet.id)}
               className={cn(
