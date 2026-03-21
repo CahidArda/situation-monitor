@@ -31,7 +31,7 @@ export function FeedPanel() {
 
   return (
     <aside className="flex flex-col h-full border-l border-border bg-background">
-      <div className="border-b border-border px-4 py-3">
+      <div className="border-b border-border px-4 h-11 flex items-center">
         <h2 className="font-mono text-sm font-semibold tracking-wide text-muted-foreground">
           FEED
         </h2>

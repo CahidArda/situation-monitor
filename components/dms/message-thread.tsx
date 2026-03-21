@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useDMMessages } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
 import type { DirectMessage } from "@/lib/interfaces/types";
+
+const EMPTY_MESSAGES: DirectMessage[] = [];
 
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString([], {
@@ -38,13 +40,13 @@ export function MessageThread({
   const { data, isLoading } = useDMMessages(personaId);
   const setMessages = useDMStore((s) => s.setMessages);
   const markRead = useDMStore((s) => s.markRead);
-  const messages = useDMStore((s) => s.messages[personaId] ?? []);
+  const messages = useDMStore((s) => s.messages[personaId]) ?? EMPTY_MESSAGES;
   const conversations = useDMStore((s) => s.conversations);
   const convo = conversations.find((c) => c.personaId === personaId);
 
   useEffect(() => {
     if (data?.messages) {
-      setMessages(personaId, data.messages);
+      setMessages(personaId, [...data.messages].reverse());
     }
   }, [data, personaId, setMessages]);
 
@@ -71,7 +73,7 @@ export function MessageThread({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col-reverse py-2">
+      <div className="flex-1 overflow-y-auto flex flex-col py-2">
         {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
