@@ -22,7 +22,7 @@ export type PersonaType =
   | "official";
 
 /** A simulated tweet */
-export interface Tweet {
+export type Tweet = {
   id: string;
   authorId: string;
   authorHandle: string;
@@ -36,7 +36,7 @@ export interface Tweet {
 }
 
 /** A news article produced by the simulation */
-export interface NewsArticle {
+export type NewsArticle = {
   id: string;
   headline: string;
   summary: string;
@@ -60,7 +60,7 @@ export type NewsCategory =
   | "breaking";
 
 /** A direct message from a persona */
-export interface DirectMessage {
+export type DirectMessage = {
   id: string;
   fromPersonaId: string;
   fromHandle: string;
@@ -73,7 +73,7 @@ export interface DirectMessage {
 
 export type DMType = "tip" | "followup" | "brag" | "panic" | "casual";
 
-export interface DMMetadata {
+export type DMMetadata = {
   eventChainId?: string;
   relatedCompany?: string;
   relatedSector?: string;
