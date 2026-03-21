@@ -2,7 +2,9 @@
 
 ## Overview
 
-The DM tab is where insider characters send the user speculative messages about future market events. Some tips are correct (giving the user a genuine advantage), some are wrong (leading them astray). DMs create a feeling of being "in the know" — the quintessential monitoring-the-situation experience.
+The DM tab is where insider characters send speculative messages about future market events. Some tips are correct (giving the user a genuine advantage), some are wrong (leading them astray). DMs create a feeling of being "in the know" — the quintessential monitoring-the-situation experience.
+
+DMs are **global broadcast messages** — the simulation generates them as part of event chains, and all users see the same DM conversations. Read/unread status is tracked in the frontend via localStorage.
 
 ## Data Model
 
@@ -12,10 +14,8 @@ interface DirectMessage {
   fromPersonaId: string;   // persona who sent it
   fromHandle: string;
   fromDisplayName: string;
-  fromAvatar: string;
   content: string;
   timestamp: number;
-  read: boolean;
   type: "tip" | "followup" | "brag" | "panic" | "casual";
   metadata?: {
     eventChainId?: string;
@@ -25,26 +25,64 @@ interface DirectMessage {
   };
 }
 
-// A conversation is a list of DMs from one persona
+// Conversation summary (derived from DM data)
 interface DMConversation {
   personaId: string;
   personaHandle: string;
   personaDisplayName: string;
-  personaAvatar: string;
   lastMessage: string;
   lastTimestamp: number;
-  unreadCount: number;
 }
 ```
 
 ## Redis Schema
 
+DMs are stored as JSON documents and indexed with Redis Search:
+
+```typescript
+import { s } from "@upstash/redis";
+
+// Store each DM as JSON
+await redis.json.set(`dm:${id}`, "$", dm);
+
+// Search index (created once at startup)
+const dmIndex = await redis.search.createIndex({
+  name: "idx:dms",
+  prefix: "dm:",
+  dataType: "json",
+  schema: s.object({
+    fromPersonaId: s.keyword(),
+    fromHandle: s.keyword(),
+    timestamp: s.number("F64"),
+    type: s.keyword(),
+    content: s.string(),
+  }),
+});
 ```
-dm:{userId}:{personaId}:messages  → Sorted Set (score = timestamp, member = DM ID)
-dm:{userId}:msg:{dmId}           → JSON string of DirectMessage
-dm:{userId}:conversations        → Sorted Set (score = lastTimestamp, member = personaId)
-dm:{userId}:unread:{personaId}   → number (unread count)
-dm:{userId}:unread:total         → number (total unread across all convos)
+
+### Query Examples
+
+```typescript
+// List messages from a persona, newest first
+const results = await dmIndex.query({
+  filter: { fromPersonaId: { $eq: personaId } },
+  orderBy: { timestamp: "DESC" },
+  limit: 20,
+});
+
+// List unique conversations (latest message per persona)
+// Option A: query all, group client-side
+// Option B: use aggregation
+const convos = await dmIndex.aggregate({
+  aggregations: {
+    byPersona: {
+      $terms: { field: "fromPersonaId", size: 50 },
+      $aggs: {
+        latestTs: { $max: { field: "timestamp" } },
+      },
+    },
+  },
+});
 ```
 
 ## Backend Interface
@@ -53,58 +91,34 @@ dm:{userId}:unread:total         → number (total unread across all convos)
 // lib/interfaces/dms.ts
 
 interface DMInterface {
-  // Send a DM to a user (called by event handlers)
-  // targetUserId can be "broadcast" to send to ALL active users
+  // Send a DM (called by event handlers)
   send(params: {
-    targetUserId: string | "broadcast";
     fromPersonaId: string;
     content: string;
     type: DirectMessage["type"];
     metadata?: DirectMessage["metadata"];
   }): Promise<DirectMessage>;
 
-  // List conversations for a user (inbox view)
-  listConversations(userId: string): Promise<DMConversation[]>;
+  // List conversations (unique personas with their latest message)
+  listConversations(): Promise<DMConversation[]>;
 
   // List messages in a conversation
+  // Uses Redis Search: filter by fromPersonaId, orderBy timestamp DESC
   listMessages(
-    userId: string,
     personaId: string,
     params?: { limit?: number; beforeTs?: number }
   ): Promise<{ messages: DirectMessage[]; hasMore: boolean }>;
-
-  // Mark conversation as read
-  markRead(userId: string, personaId: string): Promise<void>;
-
-  // Get total unread count
-  getUnreadCount(userId: string): Promise<number>;
 }
 ```
-
-### Note on "broadcast" DMs
-
-When an event sends a DM with `targetUserId: "broadcast"`, we need to send it to all active users. Active users are tracked:
-
-```
-sim:active_users → Set of user IDs (add on any API call, expire with TTL)
-```
-
-Each user ID is added to this set with a 1-hour TTL on their individual tracking key. On broadcast, iterate the set and write a DM for each user.
 
 ## API Routes
 
 ### `GET /api/dms`
-Headers: `x-user-id`
-Returns: `{ conversations: DMConversation[], totalUnread: number }`
+Returns: `{ conversations: DMConversation[] }`
 
 ### `GET /api/dms/[personaId]`
-Headers: `x-user-id`
 Query params: `limit`, `beforeTs`
 Returns: `{ messages: DirectMessage[], hasMore: boolean }`
-
-### `POST /api/dms/[personaId]/read`
-Headers: `x-user-id`
-Marks conversation as read.
 
 ## DM Templates
 
@@ -172,9 +186,10 @@ const DM_PERSONAS = [
 
 ## Frontend Behavior
 
-1. DM icon in the tab bar shows unread count badge
+1. DM icon in the tab bar shows unread count badge (tracked in localStorage)
 2. Inbox view: list of conversations sorted by most recent
 3. Click conversation → message thread view
-4. Auto-mark as read when conversation is opened
-5. New DM notification: if tab is not active, increment badge; if open, add message in real-time
+4. Auto-mark as read in localStorage when conversation is opened
+5. New DM notification: if tab is not active, increment badge; if open, add message to view
 6. Poll for new DMs every 10 seconds
+7. Unread state is per-conversation, stored as `{ [personaId]: lastReadTimestamp }` in localStorage

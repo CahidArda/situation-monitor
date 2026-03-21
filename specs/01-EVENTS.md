@@ -17,8 +17,7 @@ interface EventDefinition<T extends z.ZodType> {
   schema: T;                       // Zod schema for event metadata
   handler: (
     ctx: WorkflowContext,
-    metadata: z.infer<T>,
-    simState: SimulationState
+    metadata: z.infer<T>
   ) => Promise<EventResult>;
 }
 
@@ -31,16 +30,9 @@ interface EventResult {
     delaySeconds?: number;    // optional: wait before triggering
   }>;
 }
-
-// Passed to every handler so it can read current world state
-interface SimulationState {
-  currentTick: number;            // monotonically increasing counter
-  marketStatus: Record<string, SectorStatus>; // sectorId -> status
-  activeChains: string[];         // IDs of currently-running event chains
-}
-
-type SectorStatus = "bull" | "bear" | "volatile" | "stable";
 ```
+
+Handlers access simulation state (sector statuses, active chains, tick counter, etc.) through the relevant backend clients (e.g., `MarketInterface`, `TweetInterface`, `DMInterface`) rather than being passed a state object.
 
 ## Event Registry
 
@@ -71,7 +63,7 @@ Seed events are the entry points. They're selected randomly by the periodic trig
 interface SeedEventDefinition<T extends z.ZodType> extends EventDefinition<T> {
   weight: number;           // relative probability of being selected
   cooldownSeconds: number;  // minimum time between two firings of this seed
-  requiredConditions?: (state: SimulationState) => boolean; // optional guard
+  requiredConditions?: () => Promise<boolean>; // optional async guard (reads state via backend clients)
 }
 
 const seedEvents: SeedEventDefinition<any>[] = [];
@@ -81,7 +73,7 @@ const seedEvents: SeedEventDefinition<any>[] = [];
 
 When the periodic trigger fires:
 1. Filter seeds by cooldown (skip if fired too recently — tracked in Redis)
-2. Filter by `requiredConditions`
+2. Filter by `requiredConditions` (async — reads simulation state via backend clients)
 3. Weighted random selection among remaining seeds
 4. If multiple seeds qualify and RNG permits, fire 1–2 seeds simultaneously
 
@@ -104,7 +96,7 @@ export const { POST } = serve(async (ctx) => {
       generateSeedMetadata(seed)
     );
     // Execute the seed and get follow-ups
-    const result = await seed.handler(ctx, metadata, await getSimState());
+    const result = await seed.handler(ctx, metadata);
 
     // Execute follow-ups (potentially in parallel)
     await executeFollowUps(ctx, result.followUpEvents);
@@ -113,7 +105,7 @@ export const { POST } = serve(async (ctx) => {
   if (trigger.type === "event") {
     // Direct event trigger (from follow-up)
     const event = getEvent(trigger.eventName);
-    const result = await event.handler(ctx, trigger.metadata, await getSimState());
+    const result = await event.handler(ctx, trigger.metadata);
     await executeFollowUps(ctx, result.followUpEvents);
   }
 });
@@ -134,7 +126,7 @@ async function executeFollowUps(
       immediate.map(async (event, i) => {
         const def = getEvent(event.eventName)!;
         return ctx.run(`followup-${event.eventName}-${i}`, async () => {
-          return def.handler(ctx, event.metadata, await getSimState());
+          return def.handler(ctx, event.metadata);
         });
       })
     );
@@ -148,7 +140,7 @@ async function executeFollowUps(
   for (const event of delayed) {
     await ctx.sleep(`delay-${event.eventName}`, event.delaySeconds!);
     const def = getEvent(event.eventName)!;
-    const result = await def.handler(ctx, event.metadata, await getSimState());
+    const result = await def.handler(ctx, event.metadata);
     await executeFollowUps(ctx, result.followUpEvents);
   }
 }
@@ -184,10 +176,16 @@ The schedule fires every ~20 seconds. Not every fire produces a seed event — t
 
 ```
 sim:tick                     → number (incremented each workflow run)
-sim:sector:{sectorId}:status → "bull" | "bear" | "volatile" | "stable"
+sim:sector:{sectorId}        → Hash { status, indexValue }
 sim:seed:cooldown:{seedName} → timestamp of last fire (TTL = cooldown)
 sim:active_chains            → Set of chain IDs currently in progress
 ```
+
+`sim:sector:{sectorId}` is a Redis hash with fields:
+- `status`: `"bull" | "bear" | "volatile" | "stable"`
+- `indexValue`: current numeric sector index (starts at 100)
+
+These are read and written by the backend clients (e.g., `MarketInterface.updateSectorStatus()`, `MarketInterface.updateSectorIndex()`).
 
 ## Event Naming Convention
 

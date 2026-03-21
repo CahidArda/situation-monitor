@@ -2,7 +2,7 @@
 
 ## Overview
 
-The tweet feed is the left panel of the app — a Twitter-like stream of posts from simulated accounts. Tweets come from personas (fake people/orgs), triggered by events. The feed auto-checks for new tweets every 10 seconds and shows a "N new tweets" button.
+The tweet feed is the right panel of the app — a Twitter-like stream of posts from simulated accounts. Tweets come from personas (fake people/orgs), triggered by events. The feed auto-checks for new tweets every 10 seconds and shows a "N new tweets" button.
 
 ## Data Model
 
@@ -12,14 +12,9 @@ interface Tweet {
   authorId: string;        // persona ID
   authorHandle: string;    // e.g. "@GoldBugLarry69"
   authorDisplayName: string;
-  authorAvatar: string;    // emoji or initials
-  authorVerified: boolean;
   content: string;
   timestamp: number;       // unix ms
-  likes: number;
-  retweets: number;        // simulated count (not real feature)
-  tags: string[];          // for filtering: ["market", "scandal", "speculation"]
-  replyToId?: string;      // thread support (optional, v2)
+  likes: number;           // simulated count (not user-driven)
   newsLink?: {             // if tweet links to a news article
     newsId: string;
     headline: string;
@@ -31,11 +26,45 @@ interface Tweet {
 
 ## Redis Schema
 
+Tweets are stored as JSON documents and indexed with Redis Search:
+
+```typescript
+import { s } from "@upstash/redis";
+
+// Store each tweet as JSON
+await redis.json.set(`tweet:${id}`, "$", tweet);
+
+// Search index (created once at startup)
+const tweetIndex = await redis.search.createIndex({
+  name: "idx:tweets",
+  prefix: "tweet:",
+  dataType: "json",
+  schema: s.object({
+    authorId: s.keyword(),
+    authorHandle: s.keyword(),
+    content: s.string(),
+    timestamp: s.number("F64"),
+    eventChainId: s.keyword(),
+  }),
+});
 ```
-tweet:{id}              → JSON string of Tweet object
-tweets:feed             → Sorted Set (score = timestamp, member = tweet ID)
-tweets:latest_ts        → number (timestamp of most recent tweet)
-user:{userId}:likes     → Set of tweet IDs the user has liked
+
+No sorted sets or separate keys needed — the search index handles querying, sorting, and counting.
+
+### Query Examples
+
+```typescript
+// List tweets, newest first
+const results = await tweetIndex.query({
+  filter: { timestamp: { $lte: beforeTs } },
+  orderBy: { timestamp: "DESC" },
+  limit: 20,
+});
+
+// Count tweets newer than a timestamp
+const { count } = await tweetIndex.count({
+  filter: { timestamp: { $gt: afterTs } },
+});
 ```
 
 ## Backend Interface
@@ -45,26 +74,18 @@ user:{userId}:likes     → Set of tweet IDs the user has liked
 
 interface TweetInterface {
   // Write a tweet (called by event handlers)
-  write(tweet: Omit<Tweet, "id" | "timestamp" | "likes" | "retweets">): Promise<Tweet>;
+  write(tweet: Omit<Tweet, "id" | "timestamp" | "likes">): Promise<Tweet>;
 
   // List tweets, paginated, newest first
-  // afterTs: only return tweets newer than this timestamp (for polling)
-  // beforeTs: for loading older tweets (infinite scroll)
-  // limit: max tweets to return
+  // Uses Redis Search: orderBy timestamp DESC, with filter for afterTs/beforeTs
   list(params: {
     afterTs?: number;
     beforeTs?: number;
     limit?: number;          // default 20
   }): Promise<{ tweets: Tweet[]; hasMore: boolean }>;
 
-  // Like/unlike (user action)
-  like(tweetId: string, userId: string): Promise<void>;
-  unlike(tweetId: string, userId: string): Promise<void>;
-
-  // Check which tweets in a list the user has liked
-  getLikedStatus(tweetIds: string[], userId: string): Promise<Record<string, boolean>>;
-
   // Get count of tweets newer than a timestamp (for "N new tweets" button)
+  // Uses Redis Search: index.count() with filter timestamp > afterTs
   getNewCount(afterTs: number): Promise<number>;
 }
 ```
@@ -73,16 +94,7 @@ interface TweetInterface {
 
 ### `GET /api/tweets`
 Query params: `afterTs`, `beforeTs`, `limit`
-Headers: `x-user-id`
-Returns: `{ tweets: Tweet[], hasMore: boolean, likedByUser: Record<string, boolean> }`
-
-### `POST /api/tweets/like`
-Body: `{ tweetId: string }`
-Headers: `x-user-id`
-
-### `DELETE /api/tweets/like`
-Body: `{ tweetId: string }`
-Headers: `x-user-id`
+Returns: `{ tweets: Tweet[], hasMore: boolean }`
 
 ### `GET /api/tweets/new-count`
 Query params: `afterTs`
@@ -97,8 +109,6 @@ interface Persona {
   id: string;
   handle: string;
   displayName: string;
-  avatar: string;            // emoji
-  verified: boolean;
   type: "regular" | "news" | "analyst" | "shitposter" | "insider" | "official";
   bio: string;
   traits: string[];          // affects tweet style: ["conspiracy", "bullish", "sarcastic"]
@@ -114,8 +124,6 @@ const PERSONAS: Persona[] = [
     id: "goldbug-larry",
     handle: "@GoldBugLarry69",
     displayName: "Larry 🥇",
-    avatar: "🥇",
-    verified: false,
     type: "insider",
     bio: "Gold always goes up. Trust me bro.",
     traits: ["bullish-gold", "conspiracy", "dm-sender"],
@@ -124,8 +132,6 @@ const PERSONAS: Persona[] = [
     id: "breaking-global",
     handle: "@BreakingGlobal",
     displayName: "Breaking Global News",
-    avatar: "🌍",
-    verified: true,
     type: "news",
     bio: "First with the news. Sometimes accurate.",
     traits: ["neutral", "breaking"],
@@ -134,8 +140,6 @@ const PERSONAS: Persona[] = [
     id: "chad-investments",
     handle: "@ChadInvests",
     displayName: "Chad 📈",
-    avatar: "📈",
-    verified: false,
     type: "analyst",
     bio: "Buy the dip. Always buy the dip.",
     traits: ["bullish", "overconfident"],
@@ -144,8 +148,6 @@ const PERSONAS: Persona[] = [
     id: "market-witch",
     handle: "@MarketWitch444",
     displayName: "Cassandra ✨",
-    avatar: "🔮",
-    verified: false,
     type: "shitposter",
     bio: "I predicted 47 of the last 2 crashes",
     traits: ["bearish", "dramatic", "astrological"],
@@ -154,8 +156,6 @@ const PERSONAS: Persona[] = [
     id: "official-gazette",
     handle: "@OfficialGazette",
     displayName: "The Global Gazette",
-    avatar: "📰",
-    verified: true,
     type: "news",
     bio: "Award-winning journalism since 1847.",
     traits: ["neutral", "formal"],
@@ -164,8 +164,6 @@ const PERSONAS: Persona[] = [
     id: "degen-dave",
     handle: "@DegenDave420",
     displayName: "Dave 🎰",
-    avatar: "🎰",
-    verified: false,
     type: "shitposter",
     bio: "YOLO'd my rent into fish futures",
     traits: ["chaotic", "bullish", "meme"],
@@ -239,4 +237,4 @@ function generateTweet(
 3. If count > 0, show banner: "Show {count} new tweets"
 4. On banner click, fetch new tweets with `afterTs` and prepend to feed
 5. Infinite scroll: when near bottom, fetch older tweets with `beforeTs`
-6. Like/unlike: optimistic update in Zustand store, fire API call in background
+6. Like/unlike: stored in localStorage (`likedTweetIds` set), optimistic update in Zustand store — no API call

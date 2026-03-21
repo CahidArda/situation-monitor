@@ -18,7 +18,7 @@ Event chains are the heart of the simulation. Each chain is a sequence of events
   │  Decide if prediction will be correct (60/40)
   │
   ├──→ insider-trading.rumor-dm (delay: 0s)
-  │     DM the user: "psst, I heard ${company} is about to ${prediction}"
+  │     Send DM: "psst, I heard ${company} is about to ${prediction}"
   │
   ├──→ insider-trading.speculative-tweet (delay: 10-20s)
   │     Insider tweets vaguely about the company
@@ -31,21 +31,21 @@ Event chains are the heart of the simulation. Each chain is a sequence of events
         │
         ├── [CORRECT] insider-trading.outcome-success
         │     News: company announces thing that validates prediction
-        │     Insider DMs user: "told you so 😎"
+        │     Insider sends DM: "told you so 😎"
         │     Insider tweets smugly
         │     Multiple personas react: "how did @insider know??"
         │     └──→ insider-trading.arrest (delay: 60-120s, 30% chance)
         │           News: insider arrested for market manipulation
-        │           Insider DMs user: "delete our messages"
+        │           Insider sends DM: "delete our messages"
         │           Personas react: "LMAOOO"
         │
         └── [INCORRECT] insider-trading.outcome-failure
               Price moves opposite direction
-              Insider DMs user: "ok so that didn't go as planned 😬"
+              Insider sends DM: "ok so that didn't go as planned 😬"
               Insider tweets: "market is rigged"
               Personas react: mocking
               └──→ insider-trading.panic (delay: 30s)
-                    Insider DMs: "I'm ruined"
+                    Insider sends DM: "I'm ruined"
                     Insider tweets something desperate
 ```
 
@@ -154,7 +154,7 @@ const SCANDAL_REASONS = [
   ├──→ diplomatic-incident.reaction-wave (delay: 15-30s)
   │     Multiple personas tweet takes
   │     Analysts weigh in on market impact
-  │     An insider DMs the user about which sectors to watch
+  │     An insider sends a DM about which sectors to watch
   │
   ├──→ diplomatic-incident.escalation (delay: 60-120s)
   │     News: situation escalates (ambassador recalled, sanctions threatened)
@@ -189,7 +189,7 @@ const SCANDAL_REASONS = [
   │  Pick a small company and a manipulator persona
   │
   ├──→ pump-and-dump.insider-dm (delay: 0s)
-  │     Manipulator DMs user: "I'm about to pump ${ticker}. Get in now."
+  │     Manipulator sends DM: "I'm about to pump ${ticker}. Get in now."
   │
   ├──→ pump-and-dump.hype-tweets (delay: 10-20s)
   │     Manipulator tweets: "${ticker} is the next big thing!!!"
@@ -199,12 +199,12 @@ const SCANDAL_REASONS = [
   ├──→ pump-and-dump.peak (delay: 40-60s)
   │     Stock peaks (5-15% up)
   │     More personas FOMO in
-  │     Manipulator DMs: "almost time to dump 😈"
+  │     Manipulator sends DM: "almost time to dump 😈"
   │
   └──→ pump-and-dump.dump (delay: 10-20s after peak)
         Stock crashes back down
         News: "regulators investigating unusual trading in ${ticker}"
-        Manipulator DMs: "I'm out. Hope you sold too"
+        Manipulator sends DM: "I'm out. Hope you sold too"
         Bag-holder personas tweet in despair
 ```
 
@@ -226,7 +226,7 @@ const SCANDAL_REASONS = [
   │
   ├──→ sector-shift.early-signal (delay: 0s)
   │     Subtle news article about the catalyst
-  │     Quiet Quant DMs user: "watching ${sector} closely"
+  │     Quiet Quant sends DM: "watching ${sector} closely"
   │     Sector status changes to "volatile"
   │
   ├──→ sector-shift.confirmation (delay: 60-120s)
@@ -238,7 +238,7 @@ const SCANDAL_REASONS = [
   │     Sector status changes to bull/bear
   │     Multiple news articles about companies in the sector
   │     Wave of persona tweets
-  │     DM personas offer tips on plays
+  │     DM personas send tips on plays
   │
   └──→ sector-shift.new-normal (delay: 300-600s)
         Sector stabilizes at new level

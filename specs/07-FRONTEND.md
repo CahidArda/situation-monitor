@@ -5,23 +5,23 @@
 Two-panel layout:
 
 ```
-┌────────────────┬──────────────────────────────────┐
-│                │                                   │
-│   Tweet Feed   │           Tab Content             │
-│   (left ~35%)  │           (right ~65%)            │
-│                │                                   │
-│  ┌──────────┐  │  ┌─────┬────────┬──────┬──────┐  │
-│  │ N new    │  │  │News │ Market │Port. │ DMs  │  │
-│  │ tweets   │  │  └─────┴────────┴──────┴──────┘  │
-│  ├──────────┤  │                                   │
-│  │ Tweet    │  │  [Tab content renders here]       │
-│  │ Tweet    │  │                                   │
-│  │ Tweet    │  │                                   │
-│  │ Tweet    │  │                                   │
-│  │ ...      │  │                                   │
-│  │          │  │                                   │
-│  └──────────┘  │                                   │
-└────────────────┴──────────────────────────────────┘
+┌──────────────────────────────────┬────────────────┐
+│                                   │                │
+│           Tab Content             │   Tweet Feed   │
+│           (left ~65%)             │   (right ~35%) │
+│                                   │                │
+│  ┌─────┬────────┬──────┬──────┐  │  ┌──────────┐  │
+│  │News │ Market │Port. │ DMs  │  │  │ N new    │  │
+│  └─────┴────────┴──────┴──────┘  │  │ tweets   │  │
+│                                   │  ├──────────┤  │
+│  [Tab content renders here]       │  │ Tweet    │  │
+│                                   │  │ Tweet    │  │
+│                                   │  │ Tweet    │  │
+│                                   │  │ Tweet    │  │
+│                                   │  │ ...      │  │
+│                                   │  │          │  │
+│                                   │  └──────────┘  │
+└──────────────────────────────────┴────────────────┘
 ```
 
 On mobile, the tweet feed collapses into its own tab or a swipeable panel.
@@ -75,6 +75,7 @@ interface FeedStore {
   newTweetCount: number;          // unviewed new tweets
   isLoadingMore: boolean;
   hasMore: boolean;
+  likedTweetIds: Set<string>;     // persisted to localStorage
 
   // Actions
   setTweets: (tweets: Tweet[]) => void;
@@ -82,7 +83,7 @@ interface FeedStore {
   appendTweets: (tweets: Tweet[]) => void;
   setNewTweetCount: (count: number) => void;
   showNewTweets: () => void;      // loads buffered new tweets
-  toggleLike: (tweetId: string) => void;
+  toggleLike: (tweetId: string) => void; // toggles in likedTweetIds (localStorage)
 }
 ```
 
@@ -105,22 +106,30 @@ interface MarketStore {
 }
 ```
 
-### Portfolio Store
+### Portfolio Store (persisted to localStorage)
 
 ```typescript
 // stores/portfolio.ts
 interface PortfolioStore {
   cash: number;
   holdings: PortfolioHolding[];
-  totalValue: number;
-  totalPnl: number;
   transactions: Transaction[];
-  isLoading: boolean;
 
-  setPortfolio: (data: Portfolio) => void;
-  setTransactions: (data: Transaction[]) => void;
+  // Actions
+  buy: (asset: {
+    assetId: string;
+    assetType: "stock" | "commodity";
+    ticker: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }) => boolean; // returns false if insufficient cash
+  sell: (assetId: string, quantity: number, price: number) => boolean;
+  getComputedPortfolio: (marketPrices: Map<string, number>) => ComputedPortfolio;
 }
 ```
+
+Persisted via `zustand/middleware/persist` with `localStorage` backend. Initialized with $100,000 cash on first visit.
 
 ### DM Store
 
@@ -130,12 +139,13 @@ interface DMStore {
   conversations: DMConversation[];
   activeConversation: string | null;   // personaId
   messages: Record<string, DirectMessage[]>; // personaId -> messages
-  totalUnread: number;
+  readTimestamps: Record<string, number>;   // personaId -> lastReadTimestamp (persisted to localStorage)
 
   setConversations: (data: DMConversation[]) => void;
   setMessages: (personaId: string, messages: DirectMessage[]) => void;
   setActiveConversation: (personaId: string | null) => void;
-  decrementUnread: (personaId: string) => void;
+  markRead: (personaId: string) => void; // updates readTimestamps in localStorage
+  getUnreadCount: (personaId: string) => number; // derived from readTimestamps vs lastTimestamp
 }
 ```
 
@@ -186,31 +196,34 @@ function useNews() {
   });
 }
 
-// hooks/use-portfolio.ts
-function usePortfolio() {
-  return useQuery({
-    queryKey: ["portfolio"],
-    queryFn: () => fetchPortfolio(),
-    refetchInterval: 10_000,
-  });
-}
-
-function useBuyMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params) => buyAsset(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
-    },
-  });
-}
-
 // hooks/use-dms.ts
 function useDMConversations() {
   return useQuery({
     queryKey: ["dms", "conversations"],
     queryFn: () => fetchConversations(),
     refetchInterval: 10_000,
+  });
+}
+
+function useDMMessages(personaId: string) {
+  return useQuery({
+    queryKey: ["dms", "messages", personaId],
+    queryFn: () => fetchMessages(personaId),
+    enabled: !!personaId,
+  });
+}
+```
+
+API fetch helper (no user identity header):
+
+```typescript
+async function apiFetch(path: string, options?: RequestInit) {
+  return fetch(path, {
+    ...options,
+    headers: {
+      ...options?.headers,
+      "Content-Type": "application/json",
+    },
   });
 }
 ```
@@ -221,68 +234,38 @@ function useDMConversations() {
 <App>
 ├── <Header>                    // "MONITORING THE SITUATION" + ticker tape
 ├── <MainLayout>
-│   ├── <FeedPanel>             // Left panel
-│   │   ├── <NewTweetsBanner>   // "Show N new tweets"
-│   │   ├── <TweetList>
-│   │   │   └── <TweetCard>     // avatar, handle, content, like button, timestamp
-│   │   └── <LoadMoreSpinner>
-│   └── <ContentPanel>          // Right panel
-│       ├── <TabBar>            // News | Market | Portfolio | DMs (with badges)
-│       ├── <NewsTab>
-│       │   ├── <CategoryFilter>
-│       │   ├── <NewsCardList>
-│       │   │   └── <NewsCard>
-│       │   └── <NewsArticleModal>
-│       ├── <MarketTab>
-│       │   ├── <GlobalIndexBar>
-│       │   ├── <SectorRow>
-│       │   │   └── <SectorCard>
-│       │   ├── <CommodityRow>
-│       │   │   └── <CommodityCard>
-│       │   ├── <CompanyTable>
-│       │   │   └── <CompanyRow>
-│       │   └── <CompanyDetailSheet>  // slide-out with chart + buy/sell
-│       ├── <PortfolioTab>
-│       │   ├── <PortfolioSummary>    // cash, total value, total P&L
-│       │   ├── <HoldingsTable>
-│       │   │   └── <HoldingRow>
-│       │   └── <TransactionHistory>
-│       └── <DMsTab>
-│           ├── <ConversationList>
-│           │   └── <ConversationPreview>
-│           └── <MessageThread>
-│               └── <MessageBubble>
+│   ├── <ContentPanel>          // Left panel
+│   │   ├── <TabBar>            // News | Market | Portfolio | DMs (with badges)
+│   │   ├── <NewsTab>
+│   │   │   ├── <CategoryFilter>
+│   │   │   ├── <NewsCardList>
+│   │   │   │   └── <NewsCard>
+│   │   │   └── <NewsArticleModal>
+│   │   ├── <MarketTab>
+│   │   │   ├── <GlobalIndexBar>
+│   │   │   ├── <SectorRow>
+│   │   │   │   └── <SectorCard>
+│   │   │   ├── <CommodityRow>
+│   │   │   │   └── <CommodityCard>
+│   │   │   ├── <CompanyTable>
+│   │   │   │   └── <CompanyRow>
+│   │   │   └── <CompanyDetailSheet>  // slide-out with chart + buy/sell
+│   │   ├── <PortfolioTab>
+│   │   │   ├── <PortfolioSummary>    // cash, total value, total P&L
+│   │   │   ├── <HoldingsTable>
+│   │   │   │   └── <HoldingRow>
+│   │   │   └── <TransactionHistory>
+│   │   └── <DMsTab>
+│   │       ├── <ConversationList>
+│   │       │   └── <ConversationPreview>
+│   │       └── <MessageThread>
+│   │           └── <MessageBubble>
+│   └── <FeedPanel>             // Right panel
+│       ├── <NewTweetsBanner>   // "Show N new tweets"
+│       ├── <TweetList>
+│       │   └── <TweetCard>     // handle, display name, content, like button, timestamp
+│       └── <LoadMoreSpinner>
 └── <Footer>                    // optional: clock, tick counter, status
-```
-
-## User ID Management
-
-```typescript
-// lib/user.ts
-function getUserId(): string {
-  if (typeof window === "undefined") return "";
-  let id = localStorage.getItem("mts-user-id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("mts-user-id", id);
-  }
-  return id;
-}
-```
-
-Injected into all API calls via a shared fetch wrapper:
-
-```typescript
-async function apiFetch(path: string, options?: RequestInit) {
-  return fetch(path, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      "x-user-id": getUserId(),
-      "Content-Type": "application/json",
-    },
-  });
-}
 ```
 
 ## Responsive Behavior

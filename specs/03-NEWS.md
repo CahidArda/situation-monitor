@@ -15,7 +15,6 @@ interface NewsArticle {
   source: string;            // persona ID of the news org
   sourceDisplayName: string; // "The Global Gazette"
   category: "business" | "politics" | "world" | "markets" | "opinion" | "breaking";
-  tags: string[];            // ["oil", "fishing", "scandal"]
   timestamp: number;
   relatedCompanies?: string[];  // company IDs mentioned
   relatedSectors?: string[];   // sector IDs mentioned
@@ -26,10 +25,49 @@ interface NewsArticle {
 
 ## Redis Schema
 
+News articles are stored as JSON documents and indexed with Redis Search:
+
+```typescript
+import { s } from "@upstash/redis";
+
+// Store each article as JSON
+await redis.json.set(`news:${id}`, "$", article);
+
+// Search index (created once at startup)
+const newsIndex = await redis.search.createIndex({
+  name: "idx:news",
+  prefix: "news:",
+  dataType: "json",
+  schema: s.object({
+    headline: s.string(),
+    summary: s.string(),
+    category: s.keyword(),
+    timestamp: s.number("F64"),
+    source: s.keyword(),
+    eventChainId: s.keyword(),
+  }),
+});
 ```
-news:{id}             → JSON string of NewsArticle
-news:feed             → Sorted Set (score = timestamp, member = news ID)
-news:latest_ts        → number
+
+No sorted sets or separate keys needed — the search index handles querying, sorting by timestamp, filtering by category, and counting.
+
+### Query Examples
+
+```typescript
+// List news, newest first, filtered by category
+const results = await newsIndex.query({
+  filter: {
+    $and: [
+      { timestamp: { $lte: beforeTs } },
+      { category: { $eq: "business" } },
+    ],
+  },
+  orderBy: { timestamp: "DESC" },
+  limit: 10,
+});
+
+// Get a single article by key
+const article = await redis.json.get(`news:${id}`);
 ```
 
 ## Backend Interface
@@ -42,6 +80,7 @@ interface NewsInterface {
   write(article: Omit<NewsArticle, "id" | "timestamp">): Promise<NewsArticle>;
 
   // List articles, paginated, newest first
+  // Uses Redis Search: orderBy timestamp DESC, with optional category filter
   list(params: {
     afterTs?: number;
     beforeTs?: number;

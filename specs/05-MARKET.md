@@ -231,9 +231,11 @@ function calculateGlobalIndex(sectors: Record<string, Sector>): number {
 
 ## Redis Schema
 
+Sector dynamic state (`status`, `indexValue`) is stored in `sim:sector:{sectorId}` hashes (see 01-EVENTS.md). Static sector data (name, description, baseVolatility) lives in code.
+
 ```
-market:sector:{sectorId}           → JSON of Sector
-market:company:{companyId}         → JSON of Company
+sim:sector:{sectorId}              → Hash { status, indexValue } (shared with event system)
+market:company:{companyId}         → JSON of Company (dynamic fields only: baseValue, volatilityMultiplier overrides)
 market:commodity:{commodityId}     → JSON of Commodity
 market:global_index                → number
 market:tick                        → number (current tick, incremented on each update)

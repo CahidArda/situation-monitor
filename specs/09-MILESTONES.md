@@ -8,7 +8,7 @@ Get a working loop first: events → content → visible in UI. Then add complex
 
 ## Milestone 1: Project Skeleton & Data Layer
 
-**Goal**: Next.js project boots, Redis connects, data interfaces are defined, seed data exists.
+**Goal**: Next.js project boots, Redis connects, data interfaces are defined, seed data exists, Redis Search indexes are created.
 
 ### Tasks
 
@@ -18,8 +18,9 @@ Get a working loop first: events → content → visible in UI. Then add complex
    - Set up shadcn/ui (dark mode default)
    - Environment variables: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `SCHEDULE_SECRET`
 
-2. **Redis client**
+2. **Redis client & search indexes**
    - `lib/redis.ts`: export singleton `Redis` instance from `@upstash/redis`
+   - `lib/search.ts`: define and create Redis Search indexes for tweets, news, and DMs (using `redis.search.createIndex` with `s` schema builder)
 
 3. **Data interfaces (types only, no implementation yet)**
    - `lib/interfaces/tweets.ts` — `TweetInterface` type
@@ -32,35 +33,35 @@ Get a working loop first: events → content → visible in UI. Then add complex
    - `lib/simulation/world.ts` — countries, cities, organizations pool
    - `lib/simulation/names.ts` — random name generator (first + last from pools)
 
-5. **Verify**: app runs locally, Redis connects, types compile
+5. **Verify**: app runs locally, Redis connects, search indexes create successfully, types compile
 
 ### Deliverable
-Working Next.js app that connects to Redis. No UI, no API routes yet — just the foundation.
+Working Next.js app that connects to Redis with search indexes ready. No UI, no API routes yet — just the foundation.
 
 ---
 
 ## Milestone 2: Tweet System (Backend + Frontend)
 
-**Goal**: Tweets can be written (programmatically) and displayed in the feed. Like/unlike works. "New tweets" banner works.
+**Goal**: Tweets can be written (programmatically) and displayed in the feed. "New tweets" banner works. Likes work client-side.
 
 ### Tasks
 
 1. **Tweet backend implementation**
-   - `lib/interfaces/tweets.ts`: implement `write()`, `list()`, `like()`, `unlike()`, `getLikedStatus()`, `getNewCount()`
-   - All backed by Redis sorted sets and hashes
+   - `lib/interfaces/tweets.ts`: implement `write()`, `list()`, `getNewCount()`
+   - `write()` stores tweet via `redis.json.set()` — search index auto-indexes it
+   - `list()` uses `index.query()` with `orderBy: { timestamp: "DESC" }` and range filters
+   - `getNewCount()` uses `index.count()` with timestamp filter
 
 2. **Tweet API routes**
-   - `GET /api/tweets` — list tweets
+   - `GET /api/tweets` — list tweets (no user identity needed)
    - `GET /api/tweets/new-count` — count since timestamp
-   - `POST /api/tweets/like` — like a tweet
-   - `DELETE /api/tweets/like` — unlike
 
 3. **Tweet templates**
    - `lib/events/templates/tweets.ts` — 20–30 tweet templates across categories
    - Template selector function: given event type + persona type → pick random template → fill slots
 
 4. **Feed frontend**
-   - `stores/feed.ts` — Zustand store
+   - `stores/feed.ts` — Zustand store (includes likedTweetIds persisted to localStorage)
    - `hooks/use-tweets.ts` — TanStack Query hooks (tweets + new count)
    - `components/feed/TweetCard.tsx` — single tweet display
    - `components/feed/TweetList.tsx` — scrollable list
@@ -70,7 +71,7 @@ Working Next.js app that connects to Redis. No UI, no API routes yet — just th
 5. **Test helper**: temporary API route `POST /api/debug/tweet` that writes a random tweet (to test feed without events)
 
 ### Deliverable
-Left panel shows tweets. New tweets appear every 10s (via test helper or manual insertion). "New tweets" banner works. Like/unlike works.
+Right panel shows tweets. New tweets appear every 10s (via test helper or manual insertion). "New tweets" banner works. Like/unlike works locally.
 
 ---
 
@@ -82,35 +83,32 @@ Left panel shows tweets. New tweets appear every 10s (via test helper or manual 
 
 1. **News backend**
    - Implement `NewsInterface`: `write()`, `list()`, `get()`
+   - Uses Redis Search for list queries with category filtering and timestamp sorting
    - News API routes: `GET /api/news`, `GET /api/news/[id]`
 
 2. **News templates**
    - `lib/events/templates/news.ts` — 10–15 news article templates
 
 3. **DM backend**
-   - Implement `DMInterface`: `send()`, `listConversations()`, `listMessages()`, `markRead()`, `getUnreadCount()`
-   - DM API routes: `GET /api/dms`, `GET /api/dms/[personaId]`, `POST /api/dms/[personaId]/read`
+   - Implement `DMInterface`: `send()`, `listConversations()`, `listMessages()`
+   - Uses Redis Search for message queries and conversation aggregation
+   - DM API routes: `GET /api/dms`, `GET /api/dms/[personaId]`
 
 4. **DM templates**
    - `lib/events/templates/dms.ts` — 15–20 DM templates by type
 
-5. **User ID system**
-   - `lib/user.ts` — UUID generation + localStorage
-   - Shared fetch wrapper with `x-user-id` header
-   - `POST /api/init` — initialize user (called on app load, creates portfolio etc if new)
-
-6. **Tab UI**
-   - Main layout: left panel (feed) + right panel (tabs)
+5. **Tab UI**
+   - Main layout: left panel (tabs) + right panel (feed)
    - `components/TabBar.tsx` — News | DMs tabs (Market + Portfolio tabs exist but show "Coming soon")
    - `components/news/NewsTab.tsx`, `NewsCard.tsx`, `NewsArticleView.tsx`
    - `components/dms/DMsTab.tsx`, `ConversationList.tsx`, `MessageThread.tsx`
    - Zustand stores + TanStack hooks for news and DMs
-   - Unread badge on DMs tab
+   - Unread badge on DMs tab (tracked via localStorage readTimestamps)
 
-7. **Test helpers**: debug routes to insert test news articles and DMs
+6. **Test helpers**: debug routes to insert test news articles and DMs
 
 ### Deliverable
-Full two-panel layout. Feed on left, tabs on right. News tab shows articles, DMs tab shows conversations. All data comes from Redis.
+Full two-panel layout. Feed on right, tabs on left. News tab shows articles, DMs tab shows conversations. All data comes from Redis via search queries.
 
 ---
 
@@ -128,6 +126,7 @@ Full two-panel layout. Feed on left, tabs on right. News tab shows articles, DMs
    - `api/workflow/route.ts` — @upstash/workflow serve()
    - Handles seed triggers and event execution
    - Recursive follow-up execution
+   - Handlers access simulation state via backend clients
 
 3. **Implement 2–3 simple event chains**
    - `insider-trading` chain (full flow: DM → tweet → market hint → outcome)
@@ -135,8 +134,10 @@ Full two-panel layout. Feed on left, tabs on right. News tab shows articles, DMs
    - `noise` events (random tweets, commentary, memes)
 
 4. **Simulation state**
-   - `lib/events/state.ts` — read/write sim state in Redis (tick, active chains, cooldowns)
-   - Active user tracking
+   - `sim:tick` — monotonic counter
+   - `sim:sector:{sectorId}` — hash with `status` and `indexValue` fields
+   - `sim:seed:cooldown:{seedName}` — TTL-based cooldown tracking
+   - `sim:active_chains` — set of active chain IDs
 
 5. **QStash schedule**
    - `api/schedule/route.ts` — create/verify QStash schedule
@@ -201,7 +202,7 @@ Rich, entertaining simulation with diverse events. Multiple chains running simul
 ### Tasks
 
 1. **Market data layer**
-   - `lib/market/sectors.ts` — sector definitions
+   - `lib/market/sectors.ts` — sector definitions (static data in code)
    - `lib/market/companies.ts` — company definitions (15–20 companies)
    - `lib/market/pricing.ts` — price calculation (brownian motion + sector influence)
    - `lib/market/seed-data.ts` — initial values
@@ -212,7 +213,7 @@ Rich, entertaining simulation with diverse events. Multiple chains running simul
 
 3. **Market tick integration**
    - Workflow seed event also triggers market tick
-   - Sector index updates on each tick based on status
+   - Sector index updates via `sim:sector:{sectorId}` hash (`HSET` status and indexValue)
    - Price history stored (last 200 ticks)
 
 4. **Event → market connection**
@@ -236,14 +237,15 @@ Working stock market with real-time price updates. Prices influenced by events. 
 
 ## Milestone 7: Portfolio & Trading
 
-**Goal**: Users can buy/sell stocks and commodities. Portfolio tracking works.
+**Goal**: Users can buy/sell stocks and commodities. Portfolio tracking works entirely client-side.
 
 ### Tasks
 
-1. **Portfolio backend**
-   - `lib/interfaces/portfolio.ts` — implement full interface
-   - Portfolio API routes: `GET /api/portfolio`, `POST /api/portfolio/buy`, `POST /api/portfolio/sell`, `GET /api/portfolio/transactions`
-   - User initialization with starting cash ($100,000)
+1. **Portfolio store**
+   - `stores/portfolio.ts` — Zustand store with `persist` middleware (localStorage)
+   - Buy/sell logic with cash validation and average price calculation
+   - Transaction history tracking
+   - Initialize with $100,000 cash on first visit
 
 2. **Trading UI**
    - Buy/sell dialog accessible from Market tab (company detail view)
@@ -258,7 +260,7 @@ Working stock market with real-time price updates. Prices influenced by events. 
    - Quick-sell button on each holding
 
 4. **Integration**
-   - Portfolio values update as market prices change
+   - Portfolio values update as market prices change (via market store polling)
    - After buying based on a DM tip, see if it pays off
 
 ### Deliverable
@@ -307,11 +309,11 @@ Polished, delightful app ready to share.
 
 | # | Name | Focus | Depends On |
 |---|------|-------|------------|
-| 1 | Skeleton & Data | Project setup, types, seed data | — |
-| 2 | Tweets | Feed backend + frontend, templates | 1 |
+| 1 | Skeleton & Data | Project setup, types, seed data, Redis Search indexes | — |
+| 2 | Tweets | Feed backend + frontend, templates, client-side likes | 1 |
 | 3 | News & DMs | News + DM backend + frontend, tabs | 1, 2 |
 | 4 | Event System | Workflow, registry, 2-3 chains, QStash | 1, 2, 3 |
 | 5 | More Events | Richer content, concurrent chains, polish | 4 |
 | 6 | Stock Market | Pricing engine, sectors, market UI | 4 |
-| 7 | Portfolio | Trading, portfolio tracking | 6 |
+| 7 | Portfolio | Client-side trading, portfolio tracking | 6 |
 | 8 | Final Polish | Header, sounds, easter eggs, perf | All |

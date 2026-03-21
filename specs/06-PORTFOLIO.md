@@ -2,7 +2,7 @@
 
 ## Overview
 
-Each user starts with simulated cash and can buy/sell company stocks and commodities. The portfolio tab shows holdings, current values, P&L, and transaction history.
+Each user starts with simulated cash and can buy/sell company stocks and commodities. The portfolio is **entirely client-side** — all holdings, cash, and transaction history are stored in localStorage and managed via Zustand. Market prices come from the backend API.
 
 ## Data Model
 
@@ -14,23 +14,10 @@ interface PortfolioHolding {
   name: string;
   quantity: number;
   avgBuyPrice: number;      // average price at purchase
-  currentPrice: number;     // filled in at read time
-  totalValue: number;       // quantity * currentPrice
-  pnl: number;              // totalValue - (quantity * avgBuyPrice)
-  pnlPercent: number;
-}
-
-interface Portfolio {
-  userId: string;
-  cash: number;
-  holdings: PortfolioHolding[];
-  totalValue: number;       // cash + sum of all holding values
-  totalPnl: number;
 }
 
 interface Transaction {
-  id: string;
-  userId: string;
+  id: string;               // nanoid
   assetId: string;
   assetType: "stock" | "commodity";
   ticker: string;
@@ -42,67 +29,34 @@ interface Transaction {
 }
 ```
 
-## Redis Schema
+## localStorage Schema
 
 ```
-portfolio:{userId}:cash                → number (starting: 100000)
-portfolio:{userId}:holding:{assetId}   → JSON { quantity, avgBuyPrice, assetType, ticker, name }
-portfolio:{userId}:holdings            → Set of asset IDs
-portfolio:{userId}:transactions        → Sorted Set (score = timestamp, member = txn ID)
-portfolio:{userId}:txn:{txnId}         → JSON of Transaction
+mts:portfolio:cash         → number (starting: 100000)
+mts:portfolio:holdings     → JSON array of PortfolioHolding
+mts:portfolio:transactions → JSON array of Transaction
 ```
 
-## Backend Interface
+All portfolio data is persisted via Zustand's `persist` middleware with localStorage as the storage backend.
 
-```typescript
-// lib/interfaces/portfolio.ts
-
-interface PortfolioInterface {
-  // Get full portfolio state
-  getPortfolio(userId: string): Promise<Portfolio>;
-
-  // Buy an asset
-  buy(params: {
-    userId: string;
-    assetId: string;
-    assetType: "stock" | "commodity";
-    quantity: number;
-  }): Promise<{ transaction: Transaction; newCash: number }>;
-
-  // Sell an asset
-  sell(params: {
-    userId: string;
-    assetId: string;
-    quantity: number;
-  }): Promise<{ transaction: Transaction; newCash: number }>;
-
-  // Get transaction history
-  getTransactions(
-    userId: string,
-    params?: { limit?: number; beforeTs?: number }
-  ): Promise<{ transactions: Transaction[]; hasMore: boolean }>;
-
-  // Initialize portfolio for new user (if not exists)
-  initializeIfNew(userId: string): Promise<void>;
-}
-```
+## Client-Side Logic
 
 ### Buy Logic
 
-1. Look up current price of the asset
+1. Look up current price of the asset from market store (fetched from `/api/market`)
 2. Calculate total cost = quantity × currentPrice
 3. Check user has enough cash
 4. If yes:
    - Deduct cash
    - If user already holds this asset: update quantity, recalculate avgBuyPrice
-   - If new holding: create holding record
+   - If new holding: add holding record
    - Record transaction
-5. Return updated state
+5. Persist to localStorage
 
 ### Sell Logic
 
 1. Check user holds enough quantity
-2. Look up current price
+2. Look up current price from market store
 3. Calculate total proceeds = quantity × currentPrice
 4. Deduct quantity from holding (remove if 0)
 5. Add proceeds to cash
@@ -115,26 +69,27 @@ When buying more of an existing holding:
 newAvgPrice = (oldQuantity * oldAvgPrice + newQuantity * newPrice) / (oldQuantity + newQuantity)
 ```
 
+### Computed Values (derived at render time)
+
+```typescript
+interface ComputedHolding extends PortfolioHolding {
+  currentPrice: number;     // from market store
+  totalValue: number;       // quantity * currentPrice
+  pnl: number;              // totalValue - (quantity * avgBuyPrice)
+  pnlPercent: number;
+}
+
+interface ComputedPortfolio {
+  cash: number;
+  holdings: ComputedHolding[];
+  totalValue: number;       // cash + sum of all holding values
+  totalPnl: number;
+}
+```
+
 ## API Routes
 
-### `GET /api/portfolio`
-Headers: `x-user-id`
-Returns: `Portfolio`
-
-### `POST /api/portfolio/buy`
-Headers: `x-user-id`
-Body: `{ assetId: string, assetType: "stock" | "commodity", quantity: number }`
-Returns: `{ transaction: Transaction, newCash: number }`
-
-### `POST /api/portfolio/sell`
-Headers: `x-user-id`
-Body: `{ assetId: string, quantity: number }`
-Returns: `{ transaction: Transaction, newCash: number }`
-
-### `GET /api/portfolio/transactions`
-Headers: `x-user-id`
-Query params: `limit`, `beforeTs`
-Returns: `{ transactions: Transaction[], hasMore: boolean }`
+None — portfolio is entirely client-side. Market prices are provided by `GET /api/market`.
 
 ## Frontend Behavior
 
@@ -148,4 +103,5 @@ Returns: `{ transactions: Transaction[], hasMore: boolean }`
    - Quantity input + "Buy" button
    - Shows estimated cost and remaining cash
 3. Transaction history: collapsible section at bottom of portfolio tab
-4. Portfolio value updates as market prices change (via polling)
+4. Portfolio values update as market prices change (via polling from market store)
+5. On first visit, portfolio is initialized with $100,000 cash and no holdings
