@@ -1,0 +1,16 @@
+import { NextRequest, NextResponse } from "next/server";
+import { news } from "@/lib/news";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const article = await news.get(id);
+
+  if (!article) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(article);
+}
