@@ -1,7 +1,6 @@
 "use client";
 
-import type { NewsArticle } from "@/lib/interfaces/types";
-import { Badge } from "@/components/ui/badge";
+import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -13,6 +12,15 @@ function timeAgo(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+const CATEGORY_COLORS: Record<NewsCategory, string> = {
+  breaking: "bg-red-100 text-red-700",
+  business: "bg-blue-100 text-blue-700",
+  markets: "bg-emerald-100 text-emerald-700",
+  world: "bg-amber-100 text-amber-700",
+  politics: "bg-purple-100 text-purple-700",
+  opinion: "bg-slate-100 text-slate-600",
+};
+
 export function NewsCard({
   article,
   onClick,
@@ -23,12 +31,20 @@ export function NewsCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left border-b border-border px-4 py-4 hover:bg-card/50 transition-colors"
+      className="w-full text-left border-b border-border px-4 py-4 hover:bg-accent/30 transition-colors"
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <Badge variant="outline" className="text-xs">
+      <h3 className="font-semibold text-foreground leading-snug">
+        {article.headline}
+      </h3>
+      <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+        {article.summary}
+      </p>
+      <div className="flex items-center gap-2 mt-2">
+        <span
+          className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${CATEGORY_COLORS[article.category]}`}
+        >
           {article.category}
-        </Badge>
+        </span>
         <span className="text-xs text-muted-foreground">
           {article.sourceDisplayName}
         </span>
@@ -36,12 +52,6 @@ export function NewsCard({
           · {timeAgo(article.timestamp)}
         </span>
       </div>
-      <h3 className="font-semibold text-foreground leading-snug">
-        {article.headline}
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-        {article.summary}
-      </p>
     </button>
   );
 }

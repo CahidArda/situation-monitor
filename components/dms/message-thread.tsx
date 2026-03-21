@@ -17,8 +17,8 @@ function formatTime(timestamp: number): string {
 
 function MessageBubble({ message }: { message: DirectMessage }) {
   return (
-    <div className="px-4 py-2">
-      <div className="inline-block max-w-[85%] rounded-lg bg-card px-3 py-2">
+    <div className="px-4 py-1.5">
+      <div className="inline-block max-w-[85%] rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
         <p className="text-sm text-foreground whitespace-pre-wrap">
           {message.content}
         </p>

@@ -21,47 +21,37 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
   const liked = likedIds.includes(tweet.id);
 
   return (
-    <article className="border-b border-border px-4 py-3 hover:bg-card/50 transition-colors">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 text-base">
-            <span className="font-semibold text-foreground truncate">
-              {tweet.authorDisplayName}
-            </span>
-            <span className="text-muted-foreground truncate">
-              {tweet.authorHandle}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground text-sm whitespace-nowrap">
-              {timeAgo(tweet.timestamp)}
-            </span>
-          </div>
+    <article className="border-b border-border px-4 py-3 hover:bg-accent/30 transition-colors">
+      <p className="text-base text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed">
+        {tweet.content}
+      </p>
 
-          <p className="mt-1 text-base text-foreground whitespace-pre-wrap wrap-break-word">
-            {tweet.content}
-          </p>
-
-          {tweet.newsLink && (
-            <div className="mt-2 rounded border border-border bg-card p-2 text-sm text-muted-foreground">
-              📰 {tweet.newsLink.headline}
-            </div>
-          )}
-
-          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-            <button
-              onClick={() => toggleLike(tweet.id)}
-              className={cn(
-                "flex items-center gap-1 transition-colors hover:text-red-400",
-                liked && "text-red-500",
-              )}
-            >
-              <Heart
-                className={cn("h-3.5 w-3.5", liked && "fill-current")}
-              />
-              <span>{liked ? tweet.likes + 1 : tweet.likes}</span>
-            </button>
-          </div>
+      {tweet.newsLink && (
+        <div className="mt-2 rounded border border-border bg-accent/50 p-2 text-sm text-muted-foreground">
+          📰 {tweet.newsLink.headline}
         </div>
+      )}
+
+      <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">
+          {tweet.authorDisplayName}
+        </span>
+        <span>{tweet.authorHandle}</span>
+        <span>·</span>
+        <span>{timeAgo(tweet.timestamp)}</span>
+        <span>·</span>
+        <button
+          onClick={() => toggleLike(tweet.id)}
+          className={cn(
+            "flex items-center gap-1 transition-colors hover:text-red-400",
+            liked && "text-red-500",
+          )}
+        >
+          <Heart
+            className={cn("h-3 w-3", liked && "fill-current")}
+          />
+          <span>{liked ? tweet.likes + 1 : tweet.likes}</span>
+        </button>
       </div>
     </article>
   );

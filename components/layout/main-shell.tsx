@@ -2,28 +2,52 @@
 
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
-import { Navbar } from "./navbar";
+import { NAV_ITEMS } from "./navbar";
 
 const MainLayout = dynamic(
   () => import("./main-layout").then((m) => m.MainLayout),
   {
     ssr: false,
     loading: () => (
-      <div className="flex flex-1 h-dvh">
-        <div className="flex flex-col flex-[0.65] min-w-0">
-          <Navbar />
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex flex-col h-dvh">
+        {/* Top bar */}
+        <header className="border-b border-border px-6 h-10 flex items-center justify-center shrink-0">
+          <h1 className="font-mono text-sm font-semibold tracking-widest text-muted-foreground">
+            SITUATION MONITOR
+          </h1>
+        </header>
+
+        {/* Sub-navbars + content */}
+        <div className="flex flex-1 w-[80%] mx-auto min-h-0">
+          {/* Left: tabs sub-nav + loader */}
+          <div className="flex flex-col flex-[0.6] min-w-0">
+            <div className="border-b border-border px-4 h-10 flex items-center shrink-0">
+              <nav className="flex items-center gap-1">
+                {NAV_ITEMS.map((item) => (
+                  <span
+                    key={item.id}
+                    className="px-3 py-1 text-sm text-muted-foreground rounded-md"
+                  >
+                    {item.label}
+                  </span>
+                ))}
+              </nav>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col flex-[0.35] min-w-0 border-l border-border bg-background">
-          <div className="border-b border-border px-4 h-11 flex items-center">
-            <h2 className="font-mono text-sm font-semibold tracking-wide text-muted-foreground">
-              FEED
-            </h2>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+
+          {/* Right: feed sub-nav + loader */}
+          <div className="flex flex-col flex-[0.4] min-w-0 border-l border-border">
+            <div className="border-b border-border px-4 h-10 flex items-center shrink-0">
+              <h2 className="font-mono text-sm font-semibold tracking-wide text-muted-foreground">
+                FEED
+              </h2>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           </div>
         </div>
       </div>
@@ -31,12 +55,6 @@ const MainLayout = dynamic(
   },
 );
 
-export function MainShell({
-  content,
-  feed,
-}: {
-  content: React.ReactNode;
-  feed: React.ReactNode;
-}) {
-  return <MainLayout content={content} feed={feed} />;
+export function MainShell() {
+  return <MainLayout />;
 }
