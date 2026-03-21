@@ -1,6 +1,66 @@
 import type { PersonaType } from "@/lib/interfaces/types";
 
-type TweetTemplate = (p: Record<string, string>) => string;
+// ---------------------------------------------------------------------------
+// Typed params for each event type
+// ---------------------------------------------------------------------------
+
+export type StockMoveParams = {
+  company: string;
+  ticker: string;
+  percent: string;
+  reason: string;
+  price: string;
+};
+
+export type CeoScandalParams = {
+  company: string;
+  ceoName: string;
+  reason: string;
+  price: string;
+};
+
+export type SectorMoveParams = {
+  sector: string;
+  percent: string;
+  reason: string;
+};
+
+export type DiplomaticIncidentParams = {
+  country1: string;
+  country2: string;
+  issue: string;
+  sector: string;
+};
+
+export type ProductLaunchParams = {
+  company: string;
+  product: string;
+  direction: string;
+  percent: string;
+};
+
+export type InsiderRumorParams = {
+  ticker: string;
+};
+
+export type InsiderOutcomeParams = {
+  ticker: string;
+  insiderHandle: string;
+  direction: string;
+};
+
+export type NoiseParams = Record<string, never>;
+
+export type ArrestParams = {
+  personName: string;
+  charges: string;
+  company: string;
+  ticker: string;
+};
+
+// ---------------------------------------------------------------------------
+// Event type union & params map
+// ---------------------------------------------------------------------------
 
 export type TweetEventType =
   | "stock-rises"
@@ -16,8 +76,32 @@ export type TweetEventType =
   | "noise"
   | "arrest";
 
-/** Templates keyed by event type → persona type → array of template functions. */
-const tweetTemplates: Record<TweetEventType, Partial<Record<PersonaType, TweetTemplate[]>>> = {
+type TweetEventParams = {
+  "stock-rises": StockMoveParams;
+  "stock-falls": StockMoveParams;
+  "ceo-scandal": CeoScandalParams;
+  "sector-boom": SectorMoveParams;
+  "sector-crash": SectorMoveParams;
+  "diplomatic-incident": DiplomaticIncidentParams;
+  "product-launch": ProductLaunchParams;
+  "insider-rumor": InsiderRumorParams;
+  "insider-correct": InsiderOutcomeParams;
+  "insider-wrong": InsiderOutcomeParams;
+  "noise": NoiseParams;
+  "arrest": ArrestParams;
+};
+
+type TweetTemplate<P> = (p: P) => string;
+
+// ---------------------------------------------------------------------------
+// Template definitions
+// ---------------------------------------------------------------------------
+
+const tweetTemplates: {
+  [E in TweetEventType]: Partial<
+    Record<PersonaType, TweetTemplate<TweetEventParams[E]>[]>
+  >;
+} = {
   // ── Stock price movement ─────────────────────────────────────────────
   "stock-rises": {
     analyst: [
@@ -278,26 +362,29 @@ const tweetTemplates: Record<TweetEventType, Partial<Record<PersonaType, TweetTe
   },
 };
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 /**
- * Pick a random tweet template for the given event type and persona type,
- * fill in the params, and return the content string.
+ * Type-safe tweet content generator. Call with the event type, persona type,
+ * and the correctly-typed params for that event.
  */
-export function generateTweetContent(
-  eventType: TweetEventType,
+export function generateTweetContent<E extends TweetEventType>(
+  eventType: E,
   personaType: PersonaType,
-  params: Record<string, string>,
+  params: TweetEventParams[E],
 ): string {
-  const templates = tweetTemplates[eventType]?.[personaType] ?? [];
+  const byPersona = tweetTemplates[eventType]?.[personaType];
+  const templates = (byPersona ?? []) as TweetTemplate<TweetEventParams[E]>[];
   if (templates.length === 0) {
-    return `Something happened with ${params.company ?? params.ticker ?? "the market"}`;
+    const p = params as Record<string, string>;
+    return `Something happened with ${p.company ?? p.ticker ?? "the market"}`;
   }
   const template = templates[Math.floor(Math.random() * templates.length)];
   return template(params);
 }
 
-/**
- * List all known event types that have templates.
- */
 export function getTemplateEventTypes(): TweetEventType[] {
   return Object.keys(tweetTemplates) as TweetEventType[];
 }
