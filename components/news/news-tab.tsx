@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 import { useNews } from "@/hooks/use-news";
 import { useNewsStore } from "@/stores/news";
+import { useNavigateToNews } from "@/hooks/use-tab";
 import { NewsCard } from "./news-card";
 import { NewsArticleView } from "./news-article-view";
 
 export function NewsTab() {
+  const searchParams = useSearchParams();
+  const navigateToNews = useNavigateToNews();
   const filter = useNewsStore((s) => s.filter);
   const setFilter = useNewsStore((s) => s.setFilter);
   const { data, isLoading } = useNews(filter);
@@ -22,11 +26,24 @@ export function NewsTab() {
     }
   }, [data, setArticles]);
 
+  // Sync selected article from URL param
+  const newsId = searchParams.get("news");
+  useEffect(() => {
+    if (newsId && articles.length > 0) {
+      const found = articles.find((a) => a.id === newsId);
+      if (found && selectedArticle?.id !== found.id) {
+        selectArticle(found);
+      }
+    } else if (!newsId && selectedArticle) {
+      selectArticle(null);
+    }
+  }, [newsId, articles, selectedArticle, selectArticle]);
+
   if (selectedArticle) {
     return (
       <NewsArticleView
         article={selectedArticle}
-        onBack={() => selectArticle(null)}
+        onBack={() => navigateToNews(null)}
       />
     );
   }
@@ -60,7 +77,7 @@ export function NewsTab() {
             <NewsCard
               key={article.id}
               article={article}
-              onClick={() => selectArticle(article)}
+              onClick={() => navigateToNews(article.id)}
             />
           ))}
         </div>

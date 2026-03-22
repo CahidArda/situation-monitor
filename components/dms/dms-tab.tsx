@@ -27,7 +27,7 @@ export function DMsTab() {
     } else {
       params.delete("dm");
     }
-    router.replace(`${pathname}?${params}`);
+    router.push(`${pathname}?${params}`);
   };
 
   useEffect(() => {

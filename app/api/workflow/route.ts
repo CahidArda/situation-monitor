@@ -14,8 +14,14 @@ export const { POST } = serve(async (ctx) => {
     await ctx.run("increment-tick", () => incrementTick());
     await ctx.run("set-last-event-time", () => setLastEventTime());
 
-    const seed = await ctx.run("select-seed", () => selectSeedEvent());
-    if (!seed) return; // no eligible seed, nothing to do
+    const seedName = await ctx.run("select-seed", async () => {
+      const selected = await selectSeedEvent();
+      return selected?.name ?? null;
+    });
+    if (!seedName) return; // no eligible seed
+
+    const seed = getEvent(seedName);
+    if (!seed) return;
 
     const result = await seed.handler(ctx, {});
     await executeFollowUps(ctx, result.followUpEvents);
@@ -40,14 +46,14 @@ async function executeFollowUps(
   const delayed = events.filter((e) => e.delaySeconds);
 
   // Execute immediate follow-ups in parallel
+  // Handlers are called directly (not inside ctx.run) because they
+  // contain their own ctx.run steps internally for idempotency.
   if (immediate.length > 0) {
     const results = await Promise.all(
-      immediate.map(async (event, i) => {
+      immediate.map(async (event) => {
         const def = getEvent(event.eventName);
         if (!def) return { followUpEvents: [] } as EventResult;
-        return ctx.run(`followup-${event.eventName}-${i}`, async () => {
-          return def.handler(ctx, event.metadata);
-        });
+        return def.handler(ctx, event.metadata);
       }),
     );
 

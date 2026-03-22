@@ -14,7 +14,11 @@ export function useActiveTab() {
     (tab: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", tab);
-      router.replace(`${pathname}?${params}`);
+      // Clear DM param when switching away from DMs
+      if (tab !== "dms") params.delete("dm");
+      // Clear news param when switching away from news
+      if (tab !== "news") params.delete("news");
+      router.push(`${pathname}?${params}`);
     },
     [searchParams, router, pathname],
   );
@@ -22,10 +26,6 @@ export function useActiveTab() {
   return { activeTab, setActiveTab };
 }
 
-/**
- * Navigate to the DMs tab and open a specific conversation.
- * Call from any component without prop drilling.
- */
 export function useNavigateToDM() {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,7 +36,29 @@ export function useNavigateToDM() {
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", "dms");
       params.set("dm", personaId);
-      router.replace(`${pathname}?${params}`);
+      params.delete("news");
+      router.push(`${pathname}?${params}`);
+    },
+    [searchParams, router, pathname],
+  );
+}
+
+export function useNavigateToNews() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  return useCallback(
+    (newsId: string | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "news");
+      if (newsId) {
+        params.set("news", newsId);
+      } else {
+        params.delete("news");
+      }
+      params.delete("dm");
+      router.push(`${pathname}?${params}`);
     },
     [searchParams, router, pathname],
   );
