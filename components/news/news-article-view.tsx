@@ -2,6 +2,7 @@
 
 import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
 import { ArrowLeft } from "lucide-react";
+import { HoverableContent } from "@/components/hoverable-content";
 
 const CATEGORY_COLORS: Record<NewsCategory, string> = {
   breaking: "bg-red-100 text-red-700",
@@ -32,10 +33,10 @@ export function NewsArticleView({
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <h1 className="text-2xl font-bold text-foreground leading-tight mb-3">
-          {article.headline}
+          <HoverableContent content={article.headline} entities={article.entities} />
         </h1>
         <p className="text-base text-muted-foreground mb-4 italic">
-          {article.summary}
+          <HoverableContent content={article.summary} entities={article.entities} />
         </p>
         <div className="flex items-center gap-2 mb-6">
           <span
@@ -51,7 +52,7 @@ export function NewsArticleView({
           </span>
         </div>
         <div className="text-base text-foreground leading-relaxed whitespace-pre-wrap">
-          {article.body}
+          <HoverableContent content={article.body} entities={article.entities} />
         </div>
       </div>
     </div>

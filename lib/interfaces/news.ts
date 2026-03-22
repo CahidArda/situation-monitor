@@ -4,12 +4,13 @@ export interface NewsInterface {
   /** Write a news article (called by event handlers). */
   write(article: Omit<NewsArticle, "id" | "timestamp">): Promise<NewsArticle>;
 
-  /** List articles, paginated, newest first. Optionally filter by category. */
+  /** List articles, paginated, newest first. Supports category filter and text search. */
   list(params: {
     afterTs?: number;
     beforeTs?: number;
     limit?: number;
     category?: string;
+    search?: string;
   }): Promise<{ articles: NewsArticle[]; hasMore: boolean }>;
 
   /** Get a single article by ID. */

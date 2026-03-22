@@ -4,6 +4,8 @@ import type { Tweet } from "@/lib/interfaces/types";
 import { useFeedStore } from "@/stores/feed";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HoverableContent } from "@/components/hoverable-content";
+import { UserPopover } from "@/components/user-popover";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -23,7 +25,7 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
   return (
     <article className="border-b border-border px-4 py-3 hover:bg-accent/30 transition-colors">
       <p className="text-base text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed">
-        {tweet.content}
+        <HoverableContent content={tweet.content} entities={tweet.entities} />
       </p>
 
       {tweet.newsLink && (
@@ -33,10 +35,13 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
       )}
 
       <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">
-          {tweet.authorDisplayName}
-        </span>
-        <span>{tweet.authorHandle}</span>
+        <UserPopover personaId={tweet.authorId} displayName={tweet.authorDisplayName}>
+          <span className="font-medium text-foreground">
+            {tweet.authorDisplayName}
+          </span>
+          {" "}
+          <span>{tweet.authorHandle}</span>
+        </UserPopover>
         <span>·</span>
         <span>{timeAgo(tweet.timestamp)}</span>
         <span>·</span>

@@ -2,6 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Tweet } from "@/lib/interfaces/types";
 
+export type FeedFilter = {
+  search?: string;
+  authorId?: string;
+  label?: string; // human-readable description of the active filter
+};
+
 interface FeedStore {
   tweets: Tweet[];
   latestTimestamp: number;
@@ -9,6 +15,7 @@ interface FeedStore {
   isLoadingMore: boolean;
   hasMore: boolean;
   likedTweetIds: string[];
+  filter: FeedFilter | null;
 
   setTweets: (tweets: Tweet[]) => void;
   prependTweets: (tweets: Tweet[]) => void;
@@ -17,6 +24,7 @@ interface FeedStore {
   setIsLoadingMore: (v: boolean) => void;
   toggleLike: (tweetId: string) => void;
   isLiked: (tweetId: string) => boolean;
+  setFilter: (filter: FeedFilter | null) => void;
 }
 
 export const useFeedStore = create<FeedStore>()(
@@ -28,6 +36,7 @@ export const useFeedStore = create<FeedStore>()(
       isLoadingMore: false,
       hasMore: true,
       likedTweetIds: [],
+      filter: null,
 
       setTweets: (tweets) =>
         set({
@@ -81,6 +90,8 @@ export const useFeedStore = create<FeedStore>()(
         }),
 
       isLiked: (tweetId) => get().likedTweetIds.includes(tweetId),
+
+      setFilter: (filter) => set({ filter, tweets: [], latestTimestamp: 0, newTweetCount: 0 }),
     }),
     {
       name: "mts:feed",

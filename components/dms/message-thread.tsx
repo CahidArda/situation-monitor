@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useDMMessages } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
+import { UserPopover } from "@/components/user-popover";
 import type { DirectMessage } from "@/lib/interfaces/types";
 
 const EMPTY_MESSAGES: DirectMessage[] = [];
@@ -63,14 +64,16 @@ export function MessageThread({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div>
-          <div className="font-semibold text-foreground text-sm">
-            {convo?.personaDisplayName ?? personaId}
+        <UserPopover personaId={personaId} displayName={convo?.personaDisplayName ?? personaId}>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-foreground text-sm">
+              {convo?.personaDisplayName ?? personaId}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {convo?.personaHandle}
+            </span>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {convo?.personaHandle}
-          </div>
-        </div>
+        </UserPopover>
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col py-2">

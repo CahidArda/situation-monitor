@@ -18,7 +18,7 @@ export const news: NewsInterface = {
     return article;
   },
 
-  async list({ afterTs, beforeTs, limit = 10, category }) {
+  async list({ afterTs, beforeTs, limit = 10, category, search }) {
     const filters: Record<string, unknown>[] = [];
 
     if (afterTs != null) {
@@ -29,6 +29,14 @@ export const news: NewsInterface = {
     }
     if (category) {
       filters.push({ category: { $eq: category } });
+    }
+    if (search) {
+      filters.push({
+        $should: [
+          { headline: { $smart: search } },
+          { summary: { $smart: search } },
+        ],
+      });
     }
 
     const filter =

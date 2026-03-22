@@ -19,7 +19,7 @@ export const tweets: TweetInterface = {
     return tweet;
   },
 
-  async list({ afterTs, beforeTs, limit = 20 }) {
+  async list({ afterTs, beforeTs, limit = 20, search, authorId }) {
     const filters: Record<string, unknown>[] = [];
 
     if (afterTs != null) {
@@ -27,6 +27,12 @@ export const tweets: TweetInterface = {
     }
     if (beforeTs != null) {
       filters.push({ timestamp: { $lt: beforeTs } });
+    }
+    if (search) {
+      filters.push({ content: { $smart: search } });
+    }
+    if (authorId) {
+      filters.push({ authorId: { $eq: authorId } });
     }
 
     const filter =

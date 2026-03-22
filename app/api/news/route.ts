@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     beforeTs: params.get("beforeTs") ? Number(params.get("beforeTs")) : undefined,
     limit: params.get("limit") ? Number(params.get("limit")) : undefined,
     category: params.get("category") ?? undefined,
+    search: params.get("search") ?? undefined,
   });
 
   return NextResponse.json(result);

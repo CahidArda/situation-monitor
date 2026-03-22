@@ -2,7 +2,7 @@
 
 import type { DMConversation } from "@/lib/interfaces/types";
 import { useDMStore } from "@/stores/dms";
-import { cn } from "@/lib/utils";
+import { UserPopover } from "@/components/user-popover";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -21,7 +21,6 @@ export function ConversationList({
   conversations: DMConversation[];
   onSelect: (personaId: string) => void;
 }) {
-  const activeConversation = useDMStore((s) => s.activeConversation);
   const readTimestamps = useDMStore((s) => s.readTimestamps);
 
   if (conversations.length === 0) {
@@ -35,7 +34,6 @@ export function ConversationList({
   return (
     <div className="flex-1 overflow-y-auto">
       {conversations.map((convo) => {
-        const isActive = activeConversation === convo.personaId;
         const lastRead = readTimestamps[convo.personaId] ?? 0;
         const hasUnread = convo.lastTimestamp > lastRead;
 
@@ -43,28 +41,29 @@ export function ConversationList({
           <button
             key={convo.personaId}
             onClick={() => onSelect(convo.personaId)}
-            className={cn(
-              "w-full text-left px-4 py-3 border-b border-border hover:bg-card/50 transition-colors",
-              isActive && "bg-card",
-            )}
+            className="w-full text-left px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors"
           >
             <div className="flex items-center justify-between mb-0.5">
-              <span className="font-semibold text-foreground truncate">
-                {convo.personaDisplayName}
-              </span>
-              <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                {timeAgo(convo.lastTimestamp)}
-              </span>
+              <UserPopover personaId={convo.personaId} displayName={convo.personaDisplayName}>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-semibold text-foreground truncate">
+                    {convo.personaDisplayName}
+                  </span>
+                  <span className="text-sm text-muted-foreground truncate">
+                    {convo.personaHandle}
+                  </span>
+                </span>
+              </UserPopover>
+              <div className="flex items-center gap-2 shrink-0 ml-2">
+                {hasUnread && (
+                  <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {timeAgo(convo.lastTimestamp)}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground truncate">
-                {convo.personaHandle}
-              </span>
-              {hasUnread && (
-                <span className="h-2 w-2 rounded-full bg-accent-foreground shrink-0" />
-              )}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground truncate">
+            <p className="text-sm text-muted-foreground truncate">
               {convo.lastMessage}
             </p>
           </button>

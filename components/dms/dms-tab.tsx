@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useDMConversations } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
@@ -8,11 +9,26 @@ import { ConversationList } from "./conversation-list";
 import { MessageThread } from "./message-thread";
 
 export function DMsTab() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { data, isLoading } = useDMConversations();
   const conversations = useDMStore((s) => s.conversations);
   const setConversations = useDMStore((s) => s.setConversations);
-  const activeConversation = useDMStore((s) => s.activeConversation);
-  const setActiveConversation = useDMStore((s) => s.setActiveConversation);
+
+  // Read active DM persona from URL
+  const activePersona = searchParams.get("dm");
+
+  const setActivePersona = (personaId: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (personaId) {
+      params.set("dm", personaId);
+    } else {
+      params.delete("dm");
+    }
+    router.replace(`${pathname}?${params}`);
+  };
 
   useEffect(() => {
     if (data?.conversations) {
@@ -20,11 +36,11 @@ export function DMsTab() {
     }
   }, [data, setConversations]);
 
-  if (activeConversation) {
+  if (activePersona) {
     return (
       <MessageThread
-        personaId={activeConversation}
-        onBack={() => setActiveConversation(null)}
+        personaId={activePersona}
+        onBack={() => setActivePersona(null)}
       />
     );
   }
@@ -40,7 +56,7 @@ export function DMsTab() {
   return (
     <ConversationList
       conversations={conversations}
-      onSelect={(personaId) => setActiveConversation(personaId)}
+      onSelect={(personaId) => setActivePersona(personaId)}
     />
   );
 }

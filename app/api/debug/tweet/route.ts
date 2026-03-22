@@ -8,6 +8,22 @@ import {
   type TweetEventType,
 } from "@/lib/events/templates/tweets";
 import { pickRandom, SCANDAL_REASONS } from "@/lib/simulation/world";
+import type { ContentEntity } from "@/lib/interfaces/types";
+import { getTweetIndex } from "@/lib/search";
+
+/** Build entity list from params for hoverable highlighting */
+function extractEntities(params: Record<string, string>): ContentEntity[] {
+  const entities: ContentEntity[] = [];
+  if (params.company) entities.push({ text: params.company, type: "company" });
+  if (params.ticker) entities.push({ text: params.ticker, type: "ticker" });
+  if (params.sector) entities.push({ text: params.sector, type: "sector" });
+  if (params.ceoName) entities.push({ text: params.ceoName, type: "person" });
+  if (params.personName) entities.push({ text: params.personName, type: "person" });
+  if (params.country1) entities.push({ text: params.country1, type: "sector" });
+  if (params.country2) entities.push({ text: params.country2, type: "sector" });
+  if (params.product) entities.push({ text: params.product, type: "commodity" });
+  return entities;
+}
 
 const EVENT_GENERATORS: Record<TweetEventType, () => { personaTypes: string[]; params: Record<string, string> }> = {
   "stock-rises": () => {
@@ -154,7 +170,10 @@ export async function POST() {
     authorHandle: persona.handle,
     authorDisplayName: persona.displayName,
     content,
+    entities: extractEntities(params),
   });
+
+  await getTweetIndex().waitIndexing()
 
   return NextResponse.json({ tweet, eventType, personaType: persona.type });
 }

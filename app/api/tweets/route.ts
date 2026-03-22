@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
     afterTs: afterTs ? Number(afterTs) : undefined,
     beforeTs: beforeTs ? Number(beforeTs) : undefined,
     limit: limit ? Number(limit) : undefined,
+    search: params.get("search") ?? undefined,
+    authorId: params.get("authorId") ?? undefined,
   });
 
   return NextResponse.json(result);

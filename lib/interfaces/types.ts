@@ -2,6 +2,12 @@
 // Shared types used across multiple interfaces
 // ---------------------------------------------------------------------------
 
+/** A recognized entity in content text, used for hoverable highlights. */
+export type ContentEntity = {
+  text: string;
+  type: "company" | "sector" | "ticker" | "person" | "commodity" | "persona";
+};
+
 /** A simulated persona (fake twitter account) */
 export interface Persona {
   id: string;
@@ -32,6 +38,7 @@ export type Tweet = {
   likes: number;
   newsLink?: { newsId: string; headline: string };
   eventChainId?: string;
+  entities?: ContentEntity[];
   metadata?: Record<string, string>;
 }
 
@@ -48,6 +55,7 @@ export type NewsArticle = {
   relatedCompanies?: string[];
   relatedSectors?: string[];
   eventChainId?: string;
+  entities?: ContentEntity[];
   metadata?: Record<string, string>;
 }
 

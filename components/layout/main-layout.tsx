@@ -1,19 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useDMStore } from "@/stores/dms";
 import { Header } from "./header";
 import { TabBar } from "./tab-bar";
 import { ContentPanel } from "@/components/tabs/content-panel";
 import { FeedPanel } from "@/components/feed/feed-panel";
+import { useActiveTab } from "@/hooks/use-tab";
+import { useDMStore } from "@/stores/dms";
 
-export function MainLayout() {
-  const [activeTab, setActiveTab] = useState("news");
+function MainLayoutInner() {
+  const { activeTab, setActiveTab } = useActiveTab();
   const totalUnread = useDMStore((s) => s.getTotalUnread());
 
   return (
@@ -49,5 +50,13 @@ export function MainLayout() {
         </ResizablePanelGroup>
       </div>
     </div>
+  );
+}
+
+export function MainLayout() {
+  return (
+    <Suspense>
+      <MainLayoutInner />
+    </Suspense>
   );
 }

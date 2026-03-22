@@ -12,6 +12,28 @@ import {
 } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateNewsArticle, type NewsEventType } from "@/lib/events/templates/news";
+import type { ContentEntity } from "@/lib/interfaces/types";
+
+function extractEntities(params: Record<string, string>): ContentEntity[] {
+  const entities: ContentEntity[] = [];
+  if (params.company) entities.push({ text: params.company, type: "company" });
+  if (params.ticker) entities.push({ text: params.ticker, type: "ticker" });
+  if (params.sector) entities.push({ text: params.sector, type: "sector" });
+  if (params.ceoName) entities.push({ text: params.ceoName, type: "person" });
+  if (params.personName) entities.push({ text: params.personName, type: "person" });
+  if (params.interimCeo) entities.push({ text: params.interimCeo, type: "person" });
+  if (params.country1) entities.push({ text: params.country1, type: "sector" });
+  if (params.country2) entities.push({ text: params.country2, type: "sector" });
+  if (params.product) entities.push({ text: params.product, type: "commodity" });
+  if (params.analystName) entities.push({ text: params.analystName, type: "person" });
+  if (params.firmName) entities.push({ text: params.firmName, type: "company" });
+  if (params.majorCompanies) {
+    for (const name of params.majorCompanies.split(", ")) {
+      if (name) entities.push({ text: name, type: "company" });
+    }
+  }
+  return entities;
+}
 
 const GENERATORS: Record<NewsEventType, () => Parameters<typeof generateNewsArticle>[1]> = {
   "ceo-resignation": () => {
@@ -138,6 +160,7 @@ export async function POST() {
     category: generated.category,
     source: source.id,
     sourceDisplayName: source.displayName,
+    entities: extractEntities(params as Record<string, string>),
   });
 
   await getNewsIndex().waitIndexing();

@@ -1,6 +1,7 @@
 "use client";
 
 import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
+import { HoverableContent } from "@/components/hoverable-content";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -34,10 +35,10 @@ export function NewsCard({
       className="w-full text-left border-b border-border px-4 py-4 hover:bg-accent/30 transition-colors"
     >
       <h3 className="font-semibold text-foreground leading-snug">
-        {article.headline}
+        <HoverableContent content={article.headline} entities={article.entities} />
       </h3>
       <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-        {article.summary}
+        <HoverableContent content={article.summary} entities={article.entities} />
       </p>
       <div className="flex items-center gap-2 mt-2">
         <span
