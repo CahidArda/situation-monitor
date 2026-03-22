@@ -3,6 +3,8 @@
 import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
 import { ArrowLeft } from "lucide-react";
 import { HoverableContent } from "@/components/hoverable-content";
+import { useMarketStore } from "@/stores/market";
+import { formatPrice, formatChange, changeColor } from "@/components/market/format";
 
 const CATEGORY_COLORS: Record<NewsCategory, string> = {
   breaking: "bg-red-100 text-red-700",
@@ -20,6 +22,23 @@ export function NewsArticleView({
   article: NewsArticle;
   onBack: () => void;
 }) {
+  const companies = useMarketStore((s) => s.companies);
+  const sectors = useMarketStore((s) => s.sectors);
+
+  // Find related companies and sectors from entities
+  const relatedCompanies = companies.filter((c) =>
+    article.entities?.some(
+      (e) =>
+        (e.type === "company" && e.text === c.name) ||
+        (e.type === "ticker" && e.text === c.ticker),
+    ),
+  );
+  const relatedSectors = sectors.filter((s) =>
+    article.entities?.some(
+      (e) => e.type === "sector" && e.text === s.name,
+    ),
+  );
+
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border px-4 py-3">
@@ -54,6 +73,49 @@ export function NewsArticleView({
         <div className="text-base text-foreground leading-relaxed whitespace-pre-wrap">
           <HoverableContent content={article.body} entities={article.entities} />
         </div>
+
+        {/* Related market data */}
+        {(relatedCompanies.length > 0 || relatedSectors.length > 0) && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+              Related Market Data
+            </h3>
+            {relatedCompanies.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-2">
+                {relatedCompanies.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5"
+                  >
+                    <span className="font-mono font-semibold">{c.ticker}</span>
+                    <span className="font-mono">${formatPrice(c.currentPrice)}</span>
+                    <span className={`font-mono text-xs ${changeColor(c.change)}`}>
+                      {formatChange(c.change, c.changePercent)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {relatedSectors.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {relatedSectors.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5"
+                  >
+                    <span className="font-medium">{s.name}</span>
+                    <span className={`font-mono ${changeColor(s.indexValue - 100)}`}>
+                      {formatPrice(s.indexValue)}
+                    </span>
+                    <span className="text-[10px] px-1 py-0.5 rounded bg-slate-100 text-slate-600">
+                      {s.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

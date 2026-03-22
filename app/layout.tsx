@@ -14,9 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Monitoring the Situation",
+  title: "Situation Monitor",
   description:
-    "A satirical stock-market/news simulation. Monitor the situation.",
+    "A satirical stock-market/news simulation. CEOs resign over fishing rights, countries declare war over cheese tariffs.",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({

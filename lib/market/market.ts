@@ -19,6 +19,19 @@ import type { SectorStatus } from "@/lib/interfaces/types";
 
 const HISTORY_MAX = 200;
 
+// Initial sector values — varied to make the market interesting from the start
+const INITIAL_SECTOR_STATE: Record<string, { indexValue: number; status: SectorStatus }> = {
+  energy: { indexValue: 112, status: "bull" },
+  tech: { indexValue: 95, status: "volatile" },
+  agriculture: { indexValue: 104, status: "stable" },
+  defense: { indexValue: 108, status: "bull" },
+  finance: { indexValue: 98, status: "bear" },
+  luxury: { indexValue: 115, status: "bull" },
+  mining: { indexValue: 88, status: "bear" },
+  shipping: { indexValue: 101, status: "stable" },
+  entertainment: { indexValue: 92, status: "volatile" },
+};
+
 async function getMarketTick(): Promise<number> {
   return (await redis.get<number>("market:tick")) ?? 0;
 }
@@ -43,27 +56,19 @@ async function getSectorIndexes(): Promise<Record<string, number>> {
 async function getPreviousPrices(): Promise<Record<string, number>> {
   const prices: Record<string, number> = {};
   const tick = await getMarketTick();
-  if (tick <= 0) return prices;
+  if (tick <= 1) return prices;
 
-  // Read last stored prices from history
+  // Read second-to-last stored prices from history (the previous tick)
   for (const c of COMPANIES) {
-    const last = await redis.zrange<string[]>(
-      `market:history:company:${c.id}`,
-      -1,
-      -1,
-    );
-    if (last && last.length > 0) prices[c.id] = Number(last[0]);
+    const prev = await redis.zrange<string[]>(`market:history:company:${c.id}`, -2, -2);
+    if (prev && prev.length > 0) prices[c.id] = Number(prev[0]);
   }
   for (const c of COMMODITIES) {
-    const last = await redis.zrange<string[]>(
-      `market:history:commodity:${c.id}`,
-      -1,
-      -1,
-    );
-    if (last && last.length > 0) prices[c.id] = Number(last[0]);
+    const prev = await redis.zrange<string[]>(`market:history:commodity:${c.id}`, -2, -2);
+    if (prev && prev.length > 0) prices[c.id] = Number(prev[0]);
   }
-  const globalLast = await redis.zrange<string[]>("market:history:global", -1, -1);
-  if (globalLast && globalLast.length > 0) prices["__global"] = Number(globalLast[0]);
+  const globalPrev = await redis.zrange<string[]>("market:history:global", -2, -2);
+  if (globalPrev && globalPrev.length > 0) prices["__global"] = Number(globalPrev[0]);
 
   return prices;
 }
@@ -157,6 +162,15 @@ export const market: MarketInterface = {
   async tick() {
     const tick = await redis.incr("market:tick");
     const seed = await getMarketSeed();
+
+    // Initialize sectors on first tick
+    if (tick === 1) {
+      for (const sector of SECTORS) {
+        const initial = INITIAL_SECTOR_STATE[sector.id] ?? { indexValue: 100, status: "stable" as SectorStatus };
+        await setSectorIndex(sector.id, initial.indexValue);
+        await setSectorStatus(sector.id, initial.status);
+      }
+    }
 
     // Update each sector's index based on its status
     for (const sector of SECTORS) {

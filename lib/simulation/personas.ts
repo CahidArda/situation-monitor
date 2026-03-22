@@ -178,6 +178,17 @@ export const PERSONAS: Persona[] = [
     bio: "Official trade policy updates.",
     traits: ["formal", "political"],
   },
+
+  // ── Easter eggs ────────────────────────────────────────────────────────
+  {
+    id: "time-traveler",
+    handle: "@MerchantOfVenice1492",
+    displayName: "Giovanni the Merchant ⏳",
+    type: "shitposter",
+    bio: "Venetian trader from 1492. Somehow has WiFi. Very confused by 'stocks' but enthusiastic.",
+    traits: ["archaic", "confused", "enthusiastic"],
+    sectors: ["shipping", "luxury"],
+  },
 ];
 
 /** DM-sending personas (subset of the above) and their accuracy ratings. */

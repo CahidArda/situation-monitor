@@ -34,7 +34,7 @@ export function TabBar({
             >
               {item.label}
               {count > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
                   {count}
                 </span>
               )}

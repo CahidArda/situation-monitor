@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Situation Monitor
 
-## Getting Started
+A satirical stock-market/news simulation where CEOs resign over fishing rights, countries declare war over cheese tariffs, and insider tips come via DMs from shady characters named "GoldBug_Larry69."
 
-First, run the development server:
+The entire world is simulated. Real countries and cities, fake people. No LLMs — all content is template-driven.
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.local.example .env.local
+# Fill in your Upstash Redis and QStash credentials
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Description |
+|----------|-------------|
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
+| `QSTASH_TOKEN` | QStash token (for workflow triggers) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How It Works
 
-## Learn More
+1. Frontend polls `POST /api/tick` every 10 seconds
+2. If >60s since last event, tick triggers a workflow via QStash
+3. Workflow picks a random seed event (insider trading, CEO scandal, etc.)
+4. Event chain unfolds over time: DM tip -> speculative tweet -> market move -> outcome
+5. Frontend polls for new tweets/news/DMs and auto-shows them with highlights
+6. Market prices update each tick via brownian motion + sector influence
 
-To learn more about Next.js, take a look at the following resources:
+The simulation only runs while someone has the app open.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Adding Event Chains
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Create a new file in `lib/events/chains/`:
 
-## Deploy on Vercel
+```typescript
+import { z } from "zod";
+import { registerSeedEvent, registerEvent } from "../registry";
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+// 1. Define your chain metadata schema
+const ChainSchema = z.object({ ... });
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+// 2. Register the seed event (entry point)
+registerSeedEvent({
+  name: "my-chain.setup",
+  schema: z.object({}),
+  weight: 5,          // relative probability
+  cooldownSeconds: 120, // min time between fires
+  handler: async (ctx) => {
+    const meta = await ctx.run("setup", async () => {
+      // All randomness and Redis writes MUST be inside ctx.run()
+      return { ... };
+    });
+    return {
+      followUpEvents: [
+        { eventName: "my-chain.step-2", metadata: meta, delaySeconds: 15 },
+      ],
+    };
+  },
+});
+
+// 3. Register follow-up events
+registerEvent({
+  name: "my-chain.step-2",
+  schema: ChainSchema,
+  handler: async (ctx, meta) => {
+    // Write tweets, news, DMs inside ctx.run() steps
+    // Use Promise.all for independent parallel steps
+    await Promise.all([
+      ctx.run("tweet", async () => { ... }),
+      ctx.run("dm", async () => { ... }),
+    ]);
+    return { followUpEvents: [] }; // chain ends
+  },
+});
+```
+
+Then register it in `lib/events/registry.ts`:
+
+```typescript
+export async function loadAllChains() {
+  // ...existing chains...
+  await import("./chains/my-chain");
+}
+```
+
+## Tech Stack
+
+- **Next.js** (App Router) — framework
+- **@upstash/redis** — database + Redis Search indexes
+- **@upstash/workflow** — event execution with delays
+- **@upstash/qstash** — workflow trigger
+- **Zustand** — state management (persisted to localStorage)
+- **TanStack Query** — data fetching + polling
+- **shadcn/ui + Tailwind** — UI components
