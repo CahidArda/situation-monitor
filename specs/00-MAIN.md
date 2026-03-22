@@ -47,11 +47,11 @@ The entire world is simulated — real countries and cities, fake people. Events
 │  ├── /api/market     (prices/sectors/companies)  │
 │  ├── /api/dms        (list/get)                  │
 │  ├── /api/workflow   (upstash workflow endpoint) │
-│  └── /api/schedule   (setup qstash schedule)     │
+│  └── /api/tick       (frontend-driven trigger)    │
 │                                                  │
 │  @upstash/redis  ←→  all data + search indexes   │
 │  @upstash/workflow ←→ event execution            │
-│  @upstash/qstash  ←→ periodic seed triggers      │
+│  @upstash/qstash  ←→ workflow trigger (via tick)  │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -64,13 +64,15 @@ The entire world is simulated — real countries and cities, fake people. Events
 
 ## Data Flow
 
-1. **QStash schedule** hits `/api/workflow` every N seconds
-2. **Workflow** picks a random seed event from the registry
-3. Seed event handler runs in workflow steps, producing tweets/news/DMs/price changes
-4. Handler returns a list of follow-up events (name + metadata)
-5. Workflow executes follow-up handlers in parallel
-6. Recurse until no more follow-up events are returned
-7. Frontend polls for new data via TanStack Query (tweets every 10s, prices every 3-5s, news every 15s)
+1. **Frontend polls** `POST /api/tick` every 10 seconds
+2. **Tick endpoint** checks `sim:last_event_time` in Redis — if >60s elapsed, triggers the workflow via QStash publish; otherwise returns `event-not-started` (200)
+3. **Workflow** picks a random seed event from the registry
+4. Seed event handler runs in workflow steps (`ctx.run`), producing tweets/news/DMs/price changes
+5. Handler returns follow-up events chained sequentially (DM → tweet → outcome) with delays
+6. Workflow executes follow-ups, sleeping between delayed steps
+7. Frontend polls for new content via TanStack Query (tweets every 10s, news every 15s)
+
+This design means the simulation only runs while someone has the app open — no wasted compute.
 
 ## Key Design Principles
 

@@ -114,43 +114,47 @@ Full two-panel layout. Feed on right, tabs on left. News tab shows articles, DMs
 
 ## Milestone 4: Event System & Workflow
 
-**Goal**: Events fire via @upstash/workflow, producing tweets/news/DMs. QStash schedule triggers periodic seeds.
+**Goal**: Events fire via @upstash/workflow, producing tweets/news/DMs. Frontend-driven tick triggers periodic seeds.
 
 ### Tasks
 
 1. **Event registry**
-   - `lib/events/registry.ts` — register/get events, seed event selection
-   - `lib/events/schemas.ts` — shared Zod schemas
+   - `lib/events/registry.ts` — register/get events, weighted seed selection with cooldowns
+   - `lib/events/state.ts` — simulation state helpers (tick, sectors, active chains, last event time)
 
 2. **Workflow endpoint**
    - `api/workflow/route.ts` — @upstash/workflow serve()
    - Handles seed triggers and event execution
-   - Recursive follow-up execution
-   - Handlers access simulation state via backend clients
+   - Recursive follow-up execution with delays via `ctx.sleep()`
+   - All side effects and randomness inside `ctx.run()` steps
+   - Independent steps run in parallel via `Promise.all`
 
-3. **Implement 2–3 simple event chains**
-   - `insider-trading` chain (full flow: DM → tweet → market hint → outcome)
-   - `ceo-scandal` chain (rumor → speculation → resolution)
+3. **Tick endpoint (frontend-driven)**
+   - `POST /api/tick` — checks `sim:last_event_time` in Redis
+   - If >60s elapsed: triggers workflow via QStash publish, returns `event-started`
+   - If <60s elapsed: returns `event-not-started` (200)
+   - No authentication needed — simulation only runs while someone has the app open
+   - Frontend polls every 10s via `useTick()` hook
+
+4. **Implement 2–3 event chains**
+   - `insider-trading` chain: setup → DM tip → speculative tweet → outcome (correct/incorrect)
+   - `ceo-scandal` chain: setup → anonymous tweet → speculation wave → press conference → resign/survive
    - `noise` events (random tweets, commentary, memes)
+   - Each chain step triggers the next with delays (true sequential chain)
 
-4. **Simulation state**
+5. **Simulation state**
    - `sim:tick` — monotonic counter
+   - `sim:last_event_time` — timestamp, checked by tick endpoint
    - `sim:sector:{sectorId}` — hash with `status` and `indexValue` fields
    - `sim:seed:cooldown:{seedName}` — TTL-based cooldown tracking
    - `sim:active_chains` — set of active chain IDs
 
-5. **QStash schedule**
-   - `api/schedule/route.ts` — create/verify QStash schedule
-   - Protected by `SCHEDULE_SECRET` env var
-   - Checks if schedule already exists before creating
-   - Schedule fires every 20 seconds → hits workflow endpoint
-
 6. **End-to-end test**
-   - Call schedule endpoint to start the loop
+   - Open the app, wait for tick to fire
    - Observe tweets/news/DMs appearing in the UI organically
 
 ### Deliverable
-The simulation runs autonomously. Every ~20 seconds, a seed event may fire, producing a chain of tweets, news, and DMs that appear in the UI. The app feels alive.
+The simulation runs while the app is open. Every ~60 seconds, a seed event fires, producing a chain of tweets, news, and DMs that unfold over time. The app feels alive.
 
 ---
 

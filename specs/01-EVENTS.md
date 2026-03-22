@@ -153,29 +153,31 @@ async function executeFollowUps(
 - Delays use `ctx.sleep()` — the workflow pauses and resumes after the delay
 - Long-running chains (bull/bear market transitions) use long sleep durations
 
-## QStash Schedule
+## Frontend-Driven Tick
 
-The `/api/schedule` endpoint sets up (or verifies) the periodic QStash schedule:
+Instead of a QStash cron schedule, the simulation is driven by the frontend:
 
 ```typescript
-// POST /api/schedule
-// Requires SCHEDULE_SECRET env var for auth
+// POST /api/tick
+// No authentication needed
 
 // On call:
-// 1. Check if schedule already exists (store schedule ID in Redis)
-// 2. If not, create QStash schedule:
-//    - URL: /api/workflow
-//    - body: { type: "seed" }
-//    - cron: every 20 seconds (or configurable)
-// 3. Return schedule ID
+// 1. Read sim:last_event_time from Redis
+// 2. If >60 seconds elapsed:
+//    - Set sim:last_event_time to now
+//    - Trigger workflow via QStash publish: { type: "seed" }
+//    - Return { status: "event-started" }
+// 3. If <60 seconds:
+//    - Return { status: "event-not-started", nextIn: N }
 ```
 
-The schedule fires every ~20 seconds. Not every fire produces a seed event — the seed selection logic may decide conditions aren't met or apply cooldowns.
+The frontend polls `POST /api/tick` every 10 seconds via `useQuery`. This means the simulation only runs while someone has the app open — no wasted compute.
 
 ## Simulation State in Redis
 
 ```
 sim:tick                     → number (incremented each workflow run)
+sim:last_event_time          → number (timestamp, checked by tick endpoint)
 sim:sector:{sectorId}        → Hash { status, indexValue }
 sim:seed:cooldown:{seedName} → timestamp of last fire (TTL = cooldown)
 sim:active_chains            → Set of chain IDs currently in progress

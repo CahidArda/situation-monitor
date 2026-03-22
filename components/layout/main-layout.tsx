@@ -11,11 +11,15 @@ import { TabBar } from "./tab-bar";
 import { ContentPanel } from "@/components/tabs/content-panel";
 import { FeedPanel } from "@/components/feed/feed-panel";
 import { useActiveTab } from "@/hooks/use-tab";
+import { useTick } from "@/hooks/use-tick";
 import { useDMStore } from "@/stores/dms";
 
 function MainLayoutInner() {
   const { activeTab, setActiveTab } = useActiveTab();
   const totalUnread = useDMStore((s) => s.getTotalUnread());
+
+  // Poll the tick endpoint every 10s to keep the simulation alive
+  useTick();
 
   return (
     <div className="flex flex-col h-dvh">
