@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Mail, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDMStore } from "@/stores/dms";
@@ -45,12 +45,18 @@ function ConversationPopover({ personaId }: { personaId: string }) {
     }
   }, [data, personaId, setMessages]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (scrollRef.current && messages.length > 0) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  const scrollNodeRef = useRef<HTMLDivElement>(null);
+  const scrollToBottom = () => {
+    if (scrollNodeRef.current) {
+      scrollNodeRef.current.scrollTop = scrollNodeRef.current.scrollHeight;
     }
-  }, [messages]);
+  };
+  // Scroll on mount (callback ref) and when messages update
+  const setScrollRef = useCallback((node: HTMLDivElement | null) => {
+    scrollNodeRef.current = node;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, []);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   const displayName = convo?.personaDisplayName ?? personaId;
 
@@ -60,10 +66,10 @@ function ConversationPopover({ personaId }: { personaId: string }) {
         openOnHover
         delay={200}
         closeDelay={300}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-t-md bg-card border border-b-0 border-border hover:bg-accent/50 transition-colors cursor-pointer relative"
+        className="flex items-center gap-2 px-4 py-2 text-sm rounded-t-md bg-card border border-b-0 border-border hover:bg-accent/50 transition-colors cursor-pointer relative"
         onClick={() => markRead(personaId)}
       >
-        <span className="font-medium text-foreground truncate max-w-32">
+        <span className="font-medium text-foreground truncate max-w-40">
           {displayName}
         </span>
         {unread > 0 && (
@@ -81,9 +87,9 @@ function ConversationPopover({ personaId }: { personaId: string }) {
       </PopoverTrigger>
       <PopoverContent
         side="top"
-        align="start"
+        align="end"
         sideOffset={0}
-        className="w-80 p-0 flex flex-col max-h-96"
+        className="w-96 p-0 flex flex-col max-h-128"
       >
         <div className="border-b border-border px-3 py-2 flex items-center gap-2">
           <UserPopover personaId={personaId} displayName={displayName}>
@@ -93,17 +99,17 @@ function ConversationPopover({ personaId }: { personaId: string }) {
             )}
           </UserPopover>
         </div>
-        <div ref={scrollRef} className="flex-1 overflow-y-auto py-2 max-h-72">
+        <div ref={setScrollRef} className="flex-1 overflow-y-auto py-2">
           {messages.length === 0 ? (
-            <div className="text-center text-xs text-muted-foreground py-4">No messages</div>
+            <div className="text-center text-sm text-muted-foreground py-6">No messages</div>
           ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className="px-3 py-1">
-                <div className="inline-block max-w-[85%] rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-1.5">
-                  <p className="text-xs text-foreground whitespace-pre-wrap">
+            messages.slice(-5).map((msg) => (
+              <div key={msg.id} className="px-3 py-1.5">
+                <div className="inline-block max-w-[90%] rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">
                     <HoverableContent content={msg.content} entities={msg.entities} />
                   </p>
-                  <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  <span className="text-xs text-muted-foreground mt-1 block">
                     {formatTime(msg.timestamp)}
                   </span>
                 </div>
@@ -129,7 +135,7 @@ function DMListPopover() {
         openOnHover
         delay={200}
         closeDelay={300}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-t-md bg-card border border-b-0 border-border hover:bg-accent/50 transition-colors cursor-pointer relative"
+        className="flex items-center gap-2 px-4 py-2 text-sm rounded-t-md bg-card border border-b-0 border-border hover:bg-accent/50 transition-colors cursor-pointer relative"
       >
         <Mail className="h-3.5 w-3.5" />
         <span className="font-medium">DMs</span>
@@ -143,10 +149,10 @@ function DMListPopover() {
         side="top"
         align="end"
         sideOffset={0}
-        className="w-72 p-0 max-h-80 overflow-y-auto"
+        className="w-96 p-0 max-h-128 overflow-y-auto"
       >
         {conversations.length === 0 ? (
-          <div className="text-center text-xs text-muted-foreground py-6">
+          <div className="text-center text-sm text-muted-foreground py-6">
             No conversations yet
           </div>
         ) : (
@@ -160,25 +166,25 @@ function DMListPopover() {
                   e.stopPropagation();
                   openConversation(convo.personaId);
                 }}
-                className="w-full text-left px-3 py-2 border-b border-border hover:bg-accent/30 transition-colors cursor-pointer"
+                className="w-full text-left px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <UserPopover personaId={convo.personaId} displayName={convo.personaDisplayName}>
-                    <span className="font-semibold text-xs text-foreground">
+                    <span className="font-semibold text-sm text-foreground">
                       {convo.personaDisplayName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground ml-1">
+                    <span className="text-xs text-muted-foreground ml-1">
                       {convo.personaHandle}
                     </span>
                   </UserPopover>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {hasUnread && <span className="h-2 w-2 rounded-full bg-red-500" />}
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {timeAgo(convo.lastTimestamp)}
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                <p className="text-sm text-muted-foreground truncate mt-1">
                   {convo.lastMessage}
                 </p>
               </button>

@@ -27,12 +27,17 @@ export const useDMStore = create<DMStore>()(
 
       setConversations: (data) => {
         const state = get();
-        // Auto-open conversations that have new unread messages
+        const prevMap = new Map(
+          state.conversations.map((c) => [c.personaId, c.lastTimestamp]),
+        );
+        // Only auto-open conversations with genuinely NEW messages
+        // (lastTimestamp increased since last poll)
         const newOpen = [...state.openConversations];
         for (const convo of data) {
-          const lastRead = state.readTimestamps[convo.personaId] ?? 0;
+          const prevTs = prevMap.get(convo.personaId) ?? 0;
           if (
-            convo.lastTimestamp > lastRead &&
+            convo.lastTimestamp > prevTs &&
+            prevTs > 0 && // don't open on first load
             !newOpen.includes(convo.personaId)
           ) {
             newOpen.push(convo.personaId);

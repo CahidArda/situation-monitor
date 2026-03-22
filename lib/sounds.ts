@@ -8,7 +8,7 @@
 let audioCtx: AudioContext | null = null;
 let lastPlayTime = 0;
 
-const DEBOUNCE_MS = 3000;
+const DEBOUNCE_MS = 500;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
@@ -17,7 +17,7 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
-/** Play a subtle notification ping. Debounced to at most once per 3 seconds. */
+/** Play a subtle notification ping. Debounced to at most once per 500 milliseconds. */
 export function playNotificationSound() {
   const now = Date.now();
   if (now - lastPlayTime < DEBOUNCE_MS) return;

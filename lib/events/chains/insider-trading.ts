@@ -197,7 +197,7 @@ registerEvent({
     ];
 
     if (meta.willBeCorrect) {
-      const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 12 + 3));
+      const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 10 + 10)); // 10-20%
 
       await Promise.all([
         ctx.run("news-article", async () => {
@@ -222,6 +222,7 @@ registerEvent({
           const currentIndex = await getSectorIndex(sectorId);
           const factor = meta.prediction === "up" ? (1 + movePercent / 100) : (1 - movePercent / 100);
           await market.updateSectorIndex(sectorId, currentIndex * factor);
+          await market.updateSectorStatus(sectorId, meta.prediction === "up" ? "bull" : "bear");
         })
       ])
 

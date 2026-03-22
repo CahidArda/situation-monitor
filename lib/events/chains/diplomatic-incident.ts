@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
+import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
 import { tweets } from "@/lib/tweets";
 import { news } from "@/lib/news";
 import { dms } from "@/lib/dms";
@@ -145,11 +145,13 @@ registerEvent({
       }),
     ]);
 
-    // Set the affected sector to volatile
+    // Set the affected sector to volatile and drop the index
     await ctx.run("market-impact", async () => {
       const sector = SECTORS.find((s) => s.name === meta.affectedSector);
       if (!sector) return;
       await market.updateSectorStatus(sector.id, "volatile");
+      const currentIndex = await getSectorIndex(sector.id);
+      await market.updateSectorIndex(sector.id, currentIndex * 0.92); // ~8% drop
     });
 
     const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 15));
@@ -170,6 +172,7 @@ registerEvent({
     const entities: ContentEntity[] = [
       { text: meta.country1, type: "sector" },
       { text: meta.country2, type: "sector" },
+      { text: meta.affectedSector, type: "sector" },
     ];
 
     await Promise.all([

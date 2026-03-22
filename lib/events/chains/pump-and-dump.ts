@@ -169,7 +169,7 @@ registerEvent({
     ];
 
     // Compute drop percent once, use in news text AND market impact
-    const dropPercent = await ctx.run("calc-drop", () => Math.floor(Math.random() * 15 + 5));
+    const dropPercent = await ctx.run("calc-drop", () => Math.floor(Math.random() * 15 + 10)); // 10-25%
 
     await Promise.all([
       ctx.run("crash-news", async () => {
@@ -241,6 +241,7 @@ registerEvent({
       const sectorId = company.sectors[0].sectorId;
       const currentIndex = await getSectorIndex(sectorId);
       await market.updateSectorIndex(sectorId, currentIndex * (1 - dropPercent / 100));
+      await market.updateSectorStatus(sectorId, "volatile");
     });
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));

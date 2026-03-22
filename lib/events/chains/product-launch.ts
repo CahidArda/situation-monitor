@@ -203,7 +203,7 @@ registerEvent({
       { text: meta.product, type: "commodity" },
     ];
 
-    const impactPercent = await ctx.run("calc-impact", () => 1 + Math.random() * 2); // 1-3%
+    const impactPercent = await ctx.run("calc-impact", () => 8 + Math.random() * 7); // 8-15%
 
     if (meta.isHit) {
       await Promise.all([
@@ -242,6 +242,7 @@ registerEvent({
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
         await market.updateSectorIndex(sectorId, currentIndex * (1 + impactPercent / 100));
+        await market.updateSectorStatus(sectorId, "bull");
       });
     } else {
       await Promise.all([
@@ -280,6 +281,7 @@ registerEvent({
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
         await market.updateSectorIndex(sectorId, currentIndex * (1 - impactPercent / 100));
+        await market.updateSectorStatus(sectorId, "bear");
       });
     }
 

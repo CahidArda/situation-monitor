@@ -237,12 +237,16 @@ registerEvent({
         }),
       ]);
 
-      // CEO resignation makes the company's primary sector volatile
+      // CEO resignation: sector goes volatile + drops 8-12%
       await ctx.run("market-impact", async () => {
         const company = COMPANIES.find((c) => c.id === meta.companyId);
         if (!company || company.sectors.length === 0) return;
         const sectorId = company.sectors[0].sectorId;
         await market.updateSectorStatus(sectorId, "volatile");
+        const { getSectorIndex } = await import("../state");
+        const currentIndex = await getSectorIndex(sectorId);
+        const drop = 8 + Math.random() * 4; // 8-12%
+        await market.updateSectorIndex(sectorId, currentIndex * (1 - drop / 100));
       });
     } else {
       await Promise.all([
