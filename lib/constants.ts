@@ -66,7 +66,7 @@ export const TICK_POLL_MS = TICK_DURATION_MS;
 export const TWEET_POLL_MS = TICK_DURATION_MS;
 
 /** How often to poll for news */
-export const NEWS_POLL_MS = TICK_DURATION_MS * 2;
+export const NEWS_POLL_MS = TICK_DURATION_MS;
 
 /** How often to poll DM conversations */
 export const DM_POLL_MS = TICK_DURATION_MS;
