@@ -38,10 +38,13 @@ export function ConversationList({
         const hasUnread = convo.lastTimestamp > lastRead;
 
         return (
-          <button
+          <div
             key={convo.personaId}
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(convo.personaId)}
-            className="w-full text-left px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors"
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(convo.personaId); }}
+            className="w-full text-left px-4 py-3 border-b border-border hover:bg-accent/30 transition-colors cursor-pointer"
           >
             <div className="flex items-center justify-between mb-0.5">
               <UserPopover personaId={convo.personaId} displayName={convo.personaDisplayName}>
@@ -66,7 +69,7 @@ export function ConversationList({
             <p className="text-sm text-muted-foreground truncate">
               {convo.lastMessage}
             </p>
-          </button>
+          </div>
         );
       })}
     </div>
