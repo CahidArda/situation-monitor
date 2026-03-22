@@ -207,6 +207,18 @@ registerEvent({
     const impactPercent = await ctx.run("calc-impact", () => 8 + Math.random() * 7); // 8-15%
 
     if (meta.isHit) {
+      // Market impact first — so news/tweets reference an already-moved market
+      await ctx.run("market-impact", async () => {
+        const company = COMPANIES.find((c) => c.name === meta.companyName);
+        if (!company || company.sectors.length === 0) return;
+        const sectorId = company.sectors[0].sectorId;
+        const currentIndex = await getSectorIndex(sectorId);
+        await market.updateSectorIndex(sectorId, currentIndex * (1 + impactPercent / 100));
+        await market.updateSectorStatus(sectorId, "bull");
+      });
+
+      await ctx.sleep("impact-settle", ticksToSeconds(1));
+
       await Promise.all([
         ctx.run("hit-news", async () => {
           const newsPersonas = getPersonasByType("news");
@@ -236,16 +248,19 @@ registerEvent({
           });
         }),
       ]);
-
+    } else {
+      // Market impact first — so news/tweets reference an already-moved market
       await ctx.run("market-impact", async () => {
         const company = COMPANIES.find((c) => c.name === meta.companyName);
         if (!company || company.sectors.length === 0) return;
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
-        await market.updateSectorIndex(sectorId, currentIndex * (1 + impactPercent / 100));
-        await market.updateSectorStatus(sectorId, "bull");
+        await market.updateSectorIndex(sectorId, currentIndex * (1 - impactPercent / 100));
+        await market.updateSectorStatus(sectorId, "bear");
       });
-    } else {
+
+      await ctx.sleep("impact-settle", ticksToSeconds(1));
+
       await Promise.all([
         ctx.run("flop-news", async () => {
           const newsPersonas = getPersonasByType("news");
@@ -275,15 +290,6 @@ registerEvent({
           });
         }),
       ]);
-
-      await ctx.run("market-impact", async () => {
-        const company = COMPANIES.find((c) => c.name === meta.companyName);
-        if (!company || company.sectors.length === 0) return;
-        const sectorId = company.sectors[0].sectorId;
-        const currentIndex = await getSectorIndex(sectorId);
-        await market.updateSectorIndex(sectorId, currentIndex * (1 - impactPercent / 100));
-        await market.updateSectorStatus(sectorId, "bear");
-      });
     }
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));

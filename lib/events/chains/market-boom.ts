@@ -98,6 +98,15 @@ registerEvent({
       { text: meta.sectorName, type: "sector" },
     ];
 
+    // Apply the boom to the sector first — so news/tweets reference an already-moved market
+    await ctx.run("market-impact", async () => {
+      const currentIndex = await getSectorIndex(meta.sectorId);
+      await market.updateSectorIndex(meta.sectorId, currentIndex * (1 + meta.boomPercent / 100));
+      await market.updateSectorStatus(meta.sectorId, "bull");
+    });
+
+    await ctx.sleep("impact-settle", ticksToSeconds(1));
+
     // Write news first for newsLink
     const headline = `${meta.reason}: ${meta.sectorName} Sector to Benefit Most`;
     const article = await ctx.run("boom-news", async () => {
@@ -129,13 +138,6 @@ registerEvent({
         entities,
         newsLink: article ? { newsId: article.id, headline } : undefined,
       });
-    });
-
-    // Apply the boom to the sector
-    await ctx.run("market-impact", async () => {
-      const currentIndex = await getSectorIndex(meta.sectorId);
-      await market.updateSectorIndex(meta.sectorId, currentIndex * (1 + meta.boomPercent / 100));
-      await market.updateSectorStatus(meta.sectorId, "bull");
     });
 
     const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));

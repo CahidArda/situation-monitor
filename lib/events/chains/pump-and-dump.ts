@@ -172,6 +172,18 @@ registerEvent({
     // Compute drop percent once, use in news text AND market impact
     const dropPercent = await ctx.run("calc-drop", () => Math.floor(Math.random() * 15 + 10)); // 10-25%
 
+    // Apply the drop to the sector index first — so news/tweets reflect the move
+    await ctx.run("market-impact", async () => {
+      const company = COMPANIES.find((c) => c.name === meta.companyName);
+      if (!company || company.sectors.length === 0) return;
+      const sectorId = company.sectors[0].sectorId;
+      const currentIndex = await getSectorIndex(sectorId);
+      await market.updateSectorIndex(sectorId, currentIndex * (1 - dropPercent / 100));
+      await market.updateSectorStatus(sectorId, "volatile");
+    });
+
+    await ctx.sleep("impact-settle", ticksToSeconds(1));
+
     await Promise.all([
       ctx.run("crash-news", async () => {
         const newsPersonas = getPersonasByType("news");
@@ -234,16 +246,6 @@ registerEvent({
         });
       }),
     ]);
-
-    // Apply the same drop to the sector index
-    await ctx.run("market-impact", async () => {
-      const company = COMPANIES.find((c) => c.name === meta.companyName);
-      if (!company || company.sectors.length === 0) return;
-      const sectorId = company.sectors[0].sectorId;
-      const currentIndex = await getSectorIndex(sectorId);
-      await market.updateSectorIndex(sectorId, currentIndex * (1 - dropPercent / 100));
-      await market.updateSectorStatus(sectorId, "volatile");
-    });
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));
     return { followUpEvents: [] };

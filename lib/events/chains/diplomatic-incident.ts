@@ -74,6 +74,17 @@ registerEvent({
       { text: meta.affectedSector, type: "sector" },
     ];
 
+    // Set the affected sector to volatile and drop the index — before news/tweets reference it
+    await ctx.run("market-impact", async () => {
+      const sector = SECTORS.find((s) => s.name === meta.affectedSector);
+      if (!sector) return;
+      await market.updateSectorStatus(sector.id, "volatile");
+      const currentIndex = await getSectorIndex(sector.id);
+      await market.updateSectorIndex(sector.id, currentIndex * 0.92); // ~8% drop
+    });
+
+    await ctx.sleep("impact-settle", ticksToSeconds(1));
+
     // Write news first to get article ID for tweet newsLink
     const headline = `${meta.country1} and ${meta.country2} Clash Over ${meta.issue}`;
     const newsArticle = await ctx.run("news-article", async () => {
@@ -145,15 +156,6 @@ registerEvent({
         });
       }),
     ]);
-
-    // Set the affected sector to volatile and drop the index
-    await ctx.run("market-impact", async () => {
-      const sector = SECTORS.find((s) => s.name === meta.affectedSector);
-      if (!sector) return;
-      await market.updateSectorStatus(sector.id, "volatile");
-      const currentIndex = await getSectorIndex(sector.id);
-      await market.updateSectorIndex(sector.id, currentIndex * 0.92); // ~8% drop
-    });
 
     const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
     return {
@@ -258,6 +260,17 @@ registerEvent({
     ];
 
     if (meta.willResolve) {
+      // Market recovery first — so news/tweets reference an already-recovered sector
+      await ctx.run("market-recovery", async () => {
+        const sector = SECTORS.find((s) => s.name === meta.affectedSector);
+        if (!sector) return;
+        const currentIndex = await getSectorIndex(sector.id);
+        await market.updateSectorIndex(sector.id, currentIndex * 1.06); // ~6% recovery
+        await market.updateSectorStatus(sector.id, "stable");
+      });
+
+      await ctx.sleep("impact-settle", ticksToSeconds(1));
+
       await Promise.all([
         ctx.run("resolution-news", async () => {
           const newsPersonas = getPersonasByType("news");
