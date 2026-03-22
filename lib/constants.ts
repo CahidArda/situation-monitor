@@ -9,7 +9,7 @@ export const TICK_DURATION_SECONDS = 10;
 export const TICK_DURATION_MS = TICK_DURATION_SECONDS * 1000;
 
 /** Number of ticks between event triggers (tick endpoint cooldown) */
-export const EVENT_COOLDOWN_TICKS = 3; // 3 ticks = 30 seconds
+export const EVENT_COOLDOWN_TICKS = 2; // 2 ticks = 20 seconds
 
 /** How many ticks to look back when calculating price change */
 export const CHANGE_LOOKBACK_TICKS = 5;
