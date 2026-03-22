@@ -11,6 +11,7 @@ export async function GET(
   const result = await dms.listMessages(personaId, {
     limit: sp.get("limit") ? Number(sp.get("limit")) : undefined,
     beforeTs: sp.get("beforeTs") ? Number(sp.get("beforeTs")) : undefined,
+    afterTs: sp.get("afterTs") ? Number(sp.get("afterTs")) : undefined,
   });
 
   return NextResponse.json(result);

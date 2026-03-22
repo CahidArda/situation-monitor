@@ -29,8 +29,8 @@ export const dms: DMInterface = {
     return dm;
   },
 
-  async listConversations() {
-    const cutoff = Date.now() - DM_TTL_SECONDS * 1000;
+  async listConversations(params) {
+    const cutoff = Math.max(Date.now() - DM_TTL_SECONDS * 1000, params?.afterTs ?? 0);
     const results = await index.query({
       filter: { timestamp: { $gt: cutoff } },
       orderBy: { timestamp: "DESC" },
@@ -61,7 +61,7 @@ export const dms: DMInterface = {
   async listMessages(personaId, params) {
     const limit = params?.limit ?? 30;
 
-    const cutoff = Date.now() - DM_TTL_SECONDS * 1000;
+    const cutoff = Math.max(Date.now() - DM_TTL_SECONDS * 1000, params?.afterTs ?? 0);
     const filters: Record<string, unknown>[] = [
       { fromPersonaId: { $eq: personaId } },
       { timestamp: { $gt: cutoff } },

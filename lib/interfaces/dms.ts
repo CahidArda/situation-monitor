@@ -11,11 +11,11 @@ export interface DMInterface {
   }): Promise<DirectMessage>;
 
   /** List conversations (unique personas with their latest message). */
-  listConversations(): Promise<DMConversation[]>;
+  listConversations(params?: { afterTs?: number }): Promise<DMConversation[]>;
 
   /** List messages in a conversation, newest first. */
   listMessages(
     personaId: string,
-    params?: { limit?: number; beforeTs?: number },
+    params?: { limit?: number; beforeTs?: number; afterTs?: number },
   ): Promise<{ messages: DirectMessage[]; hasMore: boolean }>;
 }
