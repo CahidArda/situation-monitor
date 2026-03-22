@@ -25,7 +25,7 @@ export function TabBar({
               onClick={() => !item.disabled && onTabChange(item.id)}
               disabled={item.disabled}
               className={cn(
-                "relative px-3 py-1 text-sm rounded-md transition-colors",
+                "relative px-3 py-1 text-sm rounded-md transition-colors cursor-pointer",
                 isActive
                   ? "bg-accent text-accent-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50",

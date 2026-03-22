@@ -60,7 +60,7 @@ function EntityPopover({
             e.stopPropagation();
             setFeedFilter({ search: entity.text, label: entity.text });
           }}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left cursor-pointer"
         >
           <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
           Search feed
@@ -71,7 +71,7 @@ function EntityPopover({
             setNewsFilter({ search: entity.text, label: entity.text });
             setActiveTab("news");
           }}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left cursor-pointer"
         >
           <Newspaper className="h-3.5 w-3.5 text-muted-foreground" />
           Search news
@@ -82,7 +82,7 @@ function EntityPopover({
               e.stopPropagation();
               navigateToMarket(marketAction.opts);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left cursor-pointer"
           >
             <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
             {marketAction.label}

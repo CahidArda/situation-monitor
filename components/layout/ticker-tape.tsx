@@ -19,7 +19,7 @@ function TickerItem({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1 mx-3 text-xs font-mono whitespace-nowrap hover:underline"
+      className="inline-flex items-center gap-1 mx-3 text-xs font-mono whitespace-nowrap hover:underline cursor-pointer"
     >
       <span className="font-semibold">{ticker}</span>
       <span>${formatPrice(price)}</span>
@@ -40,7 +40,7 @@ function NewsItem({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center mx-3 text-xs whitespace-nowrap hover:underline"
+      className="inline-flex items-center mx-3 text-xs whitespace-nowrap hover:underline cursor-pointer"
     >
       <span className="text-amber-600 font-semibold mr-1">BREAKING</span>
       <span className="text-muted-foreground">{headline}</span>

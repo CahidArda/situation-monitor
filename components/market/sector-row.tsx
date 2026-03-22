@@ -26,7 +26,7 @@ export function SectorRow({ sectors }: { sectors: SectorWithState[] }) {
             key={sector.id}
             onClick={() => toggleSector(sector.id)}
             className={cn(
-              "shrink-0 px-3 py-1.5 rounded text-xs transition-colors",
+              "shrink-0 px-3 py-1.5 rounded text-xs transition-colors cursor-pointer",
               isSelected
                 ? "bg-accent text-accent-foreground font-medium ring-1 ring-border"
                 : "text-muted-foreground hover:bg-accent/50",

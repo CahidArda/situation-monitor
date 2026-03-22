@@ -36,7 +36,7 @@ export function UserPopover({
             e.stopPropagation();
             navigateToDM(personaId);
           }}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left cursor-pointer"
         >
           <Mail className="h-3.5 w-3.5 text-muted-foreground" />
           See DMs
@@ -46,7 +46,7 @@ export function UserPopover({
             e.stopPropagation();
             setFeedFilter({ authorId: personaId, label: displayName });
           }}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors text-left cursor-pointer"
         >
           <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
           Filter feed by user
