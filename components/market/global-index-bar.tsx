@@ -23,7 +23,7 @@ export function GlobalIndexBar({
   return (
     <div className="flex items-center gap-6 px-4 py-3 border-b border-border">
       <div className="shrink-0">
-        <div className="text-xs text-muted-foreground font-medium">GLOBAL INDEX</div>
+        <div className="text-xs text-muted-foreground font-medium">SITUATION INDEX</div>
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-mono font-semibold">{formatPrice(value)}</span>
           <span className={`text-sm font-mono ${changeColor(change)}`}>

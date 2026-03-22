@@ -39,7 +39,9 @@ export function Sparkline({
     })
     .join(" ");
 
-  const isUp = data[data.length - 1] >= data[0];
+  // Color based on 5-tick change (matching the displayed change percentage)
+  const lookback = Math.min(5, data.length - 1);
+  const isUp = data[data.length - 1] >= data[data.length - 1 - lookback];
 
   // X-axis time labels
   const totalMinutes = data.length;

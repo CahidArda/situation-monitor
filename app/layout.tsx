@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   title: "Situation Monitor",
   description:
     "A satirical stock-market/news simulation. CEOs resign over fishing rights, countries declare war over cheese tariffs.",
-  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
