@@ -7,7 +7,7 @@ import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
 import { market } from "@/lib/market/market";
 import { getPersonasByType } from "@/lib/simulation/personas";
-import { pickRandom, RIDICULOUS_PRODUCTS } from "@/lib/simulation/world";
+import { pickRandom, randomProduct } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";
 import type { ContentEntity } from "@/lib/interfaces/types";
@@ -39,7 +39,7 @@ registerSeedEvent({
         chainId,
         companyName: company.name,
         ticker: company.ticker,
-        product: pickRandom(RIDICULOUS_PRODUCTS),
+        product: randomProduct(),
         isHit: Math.random() < 0.4,
       } satisfies ChainMeta;
     });

@@ -11,7 +11,7 @@ import { DM_PERSONAS, getPersonasByType } from "@/lib/simulation/personas";
 import {
   pickRandom,
   pickRandomCountryPair,
-  DIPLOMATIC_CAUSES,
+  randomDiplomaticCause,
 } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";
@@ -48,7 +48,7 @@ registerSeedEvent({
         country1: c1.name,
         country2: c2.name,
         city: pickRandom(c1.cities),
-        issue: pickRandom(DIPLOMATIC_CAUSES),
+        issue: randomDiplomaticCause(),
         affectedSector: pickRandom(SECTORS).name,
         willResolve: Math.random() < 0.7,
       } satisfies ChainMeta;

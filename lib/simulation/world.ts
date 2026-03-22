@@ -194,17 +194,97 @@ export const SCANDAL_REASONS = [
   },
 ];
 
-export const DIPLOMATIC_CAUSES = [
-  "a cheese tariff dispute",
-  "an ambassador's cat scratching a priceless painting",
-  "a national bird debate",
-  "a timezone disagreement",
-  "a fishing rights violation involving a single trout",
-  "an argument over whose flag was planted on a newly discovered island",
-  "a dispute over the correct pronunciation of 'croissant'",
-  "an accidental airstrike on an uninhabited goat island",
+// ---------------------------------------------------------------------------
+// Diplomatic causes (randomly generated from subject + dispute)
+// ---------------------------------------------------------------------------
+
+const DIPLOMATIC_SUBJECTS = [
+  "a cheese tariff",
+  "fishing rights",
+  "an ambassador's cat",
+  "a national bird",
+  "a timezone",
+  "a flag placement",
+  "a pronunciation",
+  "a goat island",
+  "a potato export",
+  "a bridge naming",
+  "a royal wedding invite",
+  "a submarine cable",
 ];
 
+const DIPLOMATIC_DISPUTES = [
+  "dispute that escalated into sanctions",
+  "disagreement that recalled both ambassadors",
+  "violation involving a single trout",
+  "debate that shut down all trade talks",
+  "incident that scratched a priceless painting",
+  "controversy over correct pronunciation of 'croissant'",
+  "argument over whose turn it was to host the summit",
+  "misunderstanding involving an uninhabited island",
+  "scandal after a leaked diplomatic memo",
+  "crisis triggered by an accidental airstrike on a hay bale",
+];
+
+export function randomDiplomaticCause(): string {
+  const subject = DIPLOMATIC_SUBJECTS[Math.floor(Math.random() * DIPLOMATIC_SUBJECTS.length)];
+  const dispute = DIPLOMATIC_DISPUTES[Math.floor(Math.random() * DIPLOMATIC_DISPUTES.length)];
+  return `${subject} ${dispute}`;
+}
+
+// ---------------------------------------------------------------------------
+// Ridiculous products (randomly generated from adjective + noun)
+// ---------------------------------------------------------------------------
+
+const PRODUCT_ADJECTIVES = [
+  "AI-powered",
+  "blockchain",
+  "organic military-grade",
+  "luxury",
+  "smart",
+  "noise-canceling",
+  "NFT-authenticated",
+  "subscription-based",
+  "solar-powered",
+  "fish-scented",
+  "quantum-encrypted",
+  "self-driving",
+  "voice-activated",
+  "artisanal",
+  "cloud-connected",
+  "decentralized",
+  "holographic",
+  "biodegradable",
+];
+
+const PRODUCT_NOUNS = [
+  "spoon",
+  "umbrella",
+  "sunscreen",
+  "cargo shorts",
+  "toaster",
+  "hat",
+  "pencils",
+  "doorbell",
+  "flashlight",
+  "cologne",
+  "yoga mat",
+  "briefcase",
+  "toilet seat",
+  "lawn mower",
+  "pillow",
+  "fridge magnet",
+  "stapler",
+  "office chair",
+];
+
+export function randomProduct(): string {
+  const adj = PRODUCT_ADJECTIVES[Math.floor(Math.random() * PRODUCT_ADJECTIVES.length)];
+  const noun = PRODUCT_NOUNS[Math.floor(Math.random() * PRODUCT_NOUNS.length)];
+  return `${adj} ${noun}`;
+}
+
+/** @deprecated Use randomProduct() instead */
 export const RIDICULOUS_PRODUCTS = [
   "fish-scented cologne",
   "AI-powered spoon",
