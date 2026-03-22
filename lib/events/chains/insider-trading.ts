@@ -121,9 +121,14 @@ registerEvent({
   description: "Insider tweets vaguely, others react, then triggers outcome",
   schema: ChainSchema,
   handler: async (ctx, meta) => {
+    const insider = getPersona(meta.insiderPersonaId);
     const entities: ContentEntity[] = [
       { text: meta.ticker, type: "ticker" },
       { text: meta.companyName, type: "company" },
+      ...(insider ? [
+        { text: insider.handle.replace("@", ""), type: "persona" as const },
+        { text: insider.displayName, type: "persona" as const },
+      ] : []),
     ];
 
     await Promise.all([
@@ -181,9 +186,12 @@ registerEvent({
       return { followUpEvents: [] };
     }
 
+    const insiderHandle = insider.handle.replace("@", "");
     const entities: ContentEntity[] = [
       { text: meta.ticker, type: "ticker" },
       { text: meta.companyName, type: "company" },
+      { text: insiderHandle, type: "persona" },
+      { text: insider.displayName, type: "persona" },
     ];
 
     if (meta.willBeCorrect) {

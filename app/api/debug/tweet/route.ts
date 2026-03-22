@@ -22,6 +22,7 @@ function extractEntities(params: Record<string, string>): ContentEntity[] {
   if (params.country1) entities.push({ text: params.country1, type: "sector" });
   if (params.country2) entities.push({ text: params.country2, type: "sector" });
   if (params.product) entities.push({ text: params.product, type: "commodity" });
+  if (params.insiderHandle) entities.push({ text: params.insiderHandle, type: "persona" });
   return entities;
 }
 
