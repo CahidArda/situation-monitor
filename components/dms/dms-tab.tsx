@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { playNotificationSound } from "@/lib/sounds";
-import { useDMConversations } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
 import { ConversationList } from "./conversation-list";
 import { MessageThread } from "./message-thread";
@@ -14,11 +11,9 @@ export function DMsTab() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { data, isLoading } = useDMConversations();
+  // Conversations are polled globally in MainLayout — just read from the store
   const conversations = useDMStore((s) => s.conversations);
-  const setConversations = useDMStore((s) => s.setConversations);
 
-  // Read active DM persona from URL
   const activePersona = searchParams.get("dm");
 
   const setActivePersona = (personaId: string | null) => {
@@ -31,17 +26,6 @@ export function DMsTab() {
     router.push(`${pathname}?${params}`);
   };
 
-  const prevConvoCount = useRef(0);
-  useEffect(() => {
-    if (data?.conversations) {
-      if (data.conversations.length > prevConvoCount.current && prevConvoCount.current > 0) {
-        playNotificationSound();
-      }
-      prevConvoCount.current = data.conversations.length;
-      setConversations(data.conversations);
-    }
-  }, [data, setConversations]);
-
   if (activePersona) {
     return (
       <MessageThread
@@ -51,7 +35,7 @@ export function DMsTab() {
     );
   }
 
-  if (isLoading && conversations.length === 0) {
+  if (conversations.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -12,14 +12,30 @@ import { ContentPanel } from "@/components/tabs/content-panel";
 import { FeedPanel } from "@/components/feed/feed-panel";
 import { useActiveTab } from "@/hooks/use-tab";
 import { useTick } from "@/hooks/use-tick";
+import { useDMConversations } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
+import { playNotificationSound } from "@/lib/sounds";
 
 function MainLayoutInner() {
   const { activeTab, setActiveTab } = useActiveTab();
   const totalUnread = useDMStore((s) => s.getTotalUnread());
+  const setConversations = useDMStore((s) => s.setConversations);
 
   // Poll the tick endpoint every 10s to keep the simulation alive
   useTick();
+
+  // Poll DM conversations globally so unread badge updates on any tab
+  const { data: dmData } = useDMConversations();
+  const prevDMCount = useRef(0);
+  useEffect(() => {
+    if (dmData?.conversations) {
+      if (dmData.conversations.length > prevDMCount.current && prevDMCount.current > 0) {
+        playNotificationSound();
+      }
+      prevDMCount.current = dmData.conversations.length;
+      setConversations(dmData.conversations);
+    }
+  }, [dmData, setConversations]);
 
   return (
     <div className="flex flex-col h-dvh">
