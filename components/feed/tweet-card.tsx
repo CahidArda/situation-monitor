@@ -6,6 +6,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HoverableContent } from "@/components/hoverable-content";
 import { UserPopover } from "@/components/user-popover";
+import { useNavigateToNews } from "@/hooks/use-tab";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -18,6 +19,7 @@ function timeAgo(timestamp: number): string {
 }
 
 export function TweetCard({ tweet }: { tweet: Tweet }) {
+  const navigateToNews = useNavigateToNews();
   const toggleLike = useFeedStore((s) => s.toggleLike);
   const likedIds = useFeedStore((s) => s.likedTweetIds);
   const highlightedIds = useFeedStore((s) => s.highlightedIds);
@@ -36,9 +38,12 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
       </p>
 
       {tweet.newsLink && (
-        <div className="mt-2 rounded border border-border bg-accent/50 p-2 text-sm text-muted-foreground">
+        <button
+          onClick={() => navigateToNews(tweet.newsLink!.newsId)}
+          className="mt-2 w-full text-left rounded border border-border bg-accent/50 p-2 text-sm text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
+        >
           📰 {tweet.newsLink.headline}
-        </div>
+        </button>
       )}
 
       <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
