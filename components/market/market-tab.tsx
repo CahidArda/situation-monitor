@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useMarketStore } from "@/stores/market";
 import { COMPANIES } from "@/lib/market/companies";
@@ -12,6 +12,8 @@ import { CompanyDetail } from "./company-detail";
 
 export function MarketTab() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   // Prices are polled globally in MainLayout — just read from store
   const companies = useMarketStore((s) => s.companies);
   const commodities = useMarketStore((s) => s.commodities);
@@ -21,6 +23,19 @@ export function MarketTab() {
   const selectedSectorIds = useMarketStore((s) => s.selectedSectorIds);
   const selectCompany = useMarketStore((s) => s.selectCompany);
   const toggleSector = useMarketStore((s) => s.toggleSector);
+
+  // Update URL when selecting/deselecting a company
+  const selectCompanyWithUrl = (id: string | null) => {
+    selectCompany(id);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id) {
+      const company = companies.find((c) => c.id === id);
+      if (company) params.set("ticker", company.ticker);
+    } else {
+      params.delete("ticker");
+    }
+    router.push(`${pathname}?${params}`);
+  };
 
   // Read query params for deep linking
   const tickerParam = searchParams.get("ticker");
@@ -49,7 +64,7 @@ export function MarketTab() {
       return (
         <CompanyDetail
           company={company}
-          onBack={() => selectCompany(null)}
+          onBack={() => selectCompanyWithUrl(null)}
         />
       );
     }
@@ -80,7 +95,7 @@ export function MarketTab() {
       />
       <div className="my-2" />
       <SectorRow sectors={sectors} />
-      <CompanyTable companies={filteredCompanies} />
+      <CompanyTable companies={filteredCompanies} onSelect={selectCompanyWithUrl} />
     </div>
   );
 }

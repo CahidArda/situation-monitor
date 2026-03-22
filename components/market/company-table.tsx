@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import type { CompanyWithPrice } from "@/lib/interfaces/market";
-import { useMarketStore } from "@/stores/market";
 import { useBatchPriceHistory } from "@/hooks/use-market";
 import { Sparkline } from "./sparkline";
 import { formatPrice, formatChange, changeColor } from "./format";
@@ -13,19 +12,20 @@ const GRID = "grid grid-cols-[60px_1fr_80px_80px_100px_70px] items-center";
 function CompanyRow({
   company,
   prices,
+  onSelect,
 }: {
   company: CompanyWithPrice;
   prices: number[];
+  onSelect: (id: string) => void;
 }) {
-  const selectCompany = useMarketStore((s) => s.selectCompany);
   const sectorNames = company.sectors.map((s) => s.sectorId).join(", ");
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => selectCompany(company.id)}
-      onKeyDown={(e) => { if (e.key === "Enter") selectCompany(company.id); }}
+      onClick={() => onSelect(company.id)}
+      onKeyDown={(e) => { if (e.key === "Enter") onSelect(company.id); }}
       className={`${GRID} px-4 py-2 border-b border-border hover:bg-accent/30 transition-colors cursor-pointer text-sm`}
     >
       <span className="font-mono font-semibold text-foreground">
@@ -52,7 +52,7 @@ function CompanyRow({
   );
 }
 
-export function CompanyTable({ companies }: { companies: CompanyWithPrice[] }) {
+export function CompanyTable({ companies, onSelect }: { companies: CompanyWithPrice[]; onSelect: (id: string) => void }) {
   const queries = useMemo(
     () => companies.map((c) => ({ type: "company", id: c.id })),
     [companies],
@@ -84,6 +84,7 @@ export function CompanyTable({ companies }: { companies: CompanyWithPrice[] }) {
             key={c.id}
             company={c}
             prices={history.map((h) => h.price)}
+            onSelect={onSelect}
           />
         );
       })}
