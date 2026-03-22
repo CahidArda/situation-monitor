@@ -14,6 +14,7 @@ import {
   setSectorIndex,
   setSectorStatus,
 } from "@/lib/events/state";
+import { CHANGE_LOOKBACK_TICKS } from "@/lib/constants";
 import type { MarketInterface, CompanyWithPrice, CommodityWithPrice, SectorWithState } from "@/lib/interfaces/market";
 import type { SectorStatus } from "@/lib/interfaces/types";
 
@@ -54,7 +55,7 @@ async function getSectorIndexes(): Promise<Record<string, number>> {
   return indexes;
 }
 
-const CHANGE_LOOKBACK = 5; // compare current price to 5 ticks ago (~5 minutes)
+const CHANGE_LOOKBACK = CHANGE_LOOKBACK_TICKS;
 
 async function getPreviousPrices(): Promise<Record<string, number>> {
   const prices: Record<string, number> = {};

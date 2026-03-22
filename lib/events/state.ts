@@ -1,4 +1,5 @@
 import { redis } from "@/lib/redis";
+import { CHAIN_TTL_SECONDS } from "@/lib/constants";
 import type { SectorStatus } from "@/lib/interfaces/types";
 
 // ---------------------------------------------------------------------------
@@ -59,8 +60,6 @@ export async function setSectorIndex(
 // Active chains (TTL-based so orphaned chains auto-expire)
 // ---------------------------------------------------------------------------
 
-const CHAIN_TTL = 300; // 5 minutes — chains that don't finish auto-expire
-
 export async function getActiveChains(): Promise<string[]> {
   return (await redis.smembers("sim:active_chains")) ?? [];
 }
@@ -68,7 +67,7 @@ export async function getActiveChains(): Promise<string[]> {
 export async function addActiveChain(chainId: string): Promise<void> {
   await redis.sadd("sim:active_chains", chainId);
   // Also set a TTL key — if the chain doesn't finish, it auto-expires
-  await redis.set(`sim:chain:${chainId}`, 1, { ex: CHAIN_TTL });
+  await redis.set(`sim:chain:${chainId}`, 1, { ex: CHAIN_TTL_SECONDS });
 }
 
 export async function removeActiveChain(chainId: string): Promise<void> {

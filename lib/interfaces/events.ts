@@ -25,6 +25,6 @@ export interface EventDefinition<T extends z.ZodType> {
 export interface SeedEventDefinition<T extends z.ZodType>
   extends EventDefinition<T> {
   weight: number;
-  cooldownSeconds: number;
+  cooldownTicks: number;
   requiredConditions?: () => Promise<boolean>;
 }

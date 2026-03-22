@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { NEWS_POLL_MS } from "@/lib/constants";
 import type { NewsArticle } from "@/lib/interfaces/types";
 import type { NewsFilter } from "@/stores/news";
 
@@ -28,7 +29,7 @@ export function useNews(filter?: NewsFilter | null) {
       fetchNews({
         search: filter?.search,
       }),
-    refetchInterval: 15_000,
+    refetchInterval: NEWS_POLL_MS,
   });
 }
 

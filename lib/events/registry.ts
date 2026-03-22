@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { redis } from "@/lib/redis";
+import { ticksToSeconds } from "@/lib/constants";
 import type { EventDefinition, SeedEventDefinition } from "@/lib/interfaces/events";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +60,7 @@ export async function selectSeedEvent(): Promise<SeedEventDefinition<z.ZodType> 
       await redis.set(
         `sim:seed:cooldown:${seed.name}`,
         Date.now(),
-        { ex: seed.cooldownSeconds },
+        { ex: ticksToSeconds(seed.cooldownTicks) },
       );
       return seed;
     }

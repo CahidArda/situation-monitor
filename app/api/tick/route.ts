@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import { getLastEventTime, setLastEventTime } from "@/lib/events/state";
+import { EVENT_COOLDOWN_TICKS, TICK_DURATION_MS } from "@/lib/constants";
 
-const EVENT_COOLDOWN_MS = 30_000; // 30 seconds between events
+const EVENT_COOLDOWN_MS = EVENT_COOLDOWN_TICKS * TICK_DURATION_MS;
 
 export async function POST(req: NextRequest) {
   const lastEventTime = await getLastEventTime();

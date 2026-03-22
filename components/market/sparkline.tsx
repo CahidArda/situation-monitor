@@ -1,5 +1,7 @@
 "use client";
 
+import { CHANGE_LOOKBACK_TICKS, TICK_DURATION_SECONDS } from "@/lib/constants";
+
 function formatCompact(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   if (n >= 100) return n.toFixed(0);
@@ -39,12 +41,12 @@ export function Sparkline({
     })
     .join(" ");
 
-  // Color based on 5-tick change (matching the displayed change percentage)
-  const lookback = Math.min(5, data.length - 1);
+  // Color based on N-tick change (matching the displayed change percentage)
+  const lookback = Math.min(CHANGE_LOOKBACK_TICKS, data.length - 1);
   const isUp = data[data.length - 1] >= data[data.length - 1 - lookback];
 
-  // X-axis time labels
-  const totalMinutes = data.length;
+  // X-axis time labels (each data point = 1 tick)
+  const totalMinutes = Math.round((data.length * TICK_DURATION_SECONDS) / 60);
   const xLabels: { x: number; text: string }[] = [];
   if (showLabels && data.length > 4) {
     const labelCount = Math.min(5, data.length);

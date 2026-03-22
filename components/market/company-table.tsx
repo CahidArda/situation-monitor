@@ -6,6 +6,7 @@ import { useBatchPriceHistory } from "@/hooks/use-market";
 import { Sparkline } from "./sparkline";
 import { formatPrice, formatChange, changeColor } from "./format";
 import { HoverableContent } from "@/components/hoverable-content";
+import { CHANGE_LOOKBACK_TICKS } from "@/lib/constants";
 
 const GRID = "grid grid-cols-[60px_1fr_80px_80px_100px_70px] items-center";
 
@@ -74,7 +75,7 @@ export function CompanyTable({ companies, onSelect }: { companies: CompanyWithPr
         <span>Company</span>
         <span>Sector</span>
         <span className="text-right">Price</span>
-        <span className="text-right">5-tick</span>
+        <span className="text-right">{CHANGE_LOOKBACK_TICKS}-tick</span>
         <span className="text-right">Chart</span>
       </div>
       {companies.map((c) => {

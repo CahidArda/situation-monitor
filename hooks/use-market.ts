@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { MARKET_POLL_MS, MARKET_HISTORY_POLL_MS } from "@/lib/constants";
 import type { CompanyWithPrice, CommodityWithPrice, SectorWithState } from "@/lib/interfaces/market";
 
 type MarketData = {
@@ -44,7 +45,7 @@ export function useMarketPrices() {
   return useQuery({
     queryKey: ["market", "prices"],
     queryFn: fetchMarketPrices,
-    refetchInterval: 4_000,
+    refetchInterval: MARKET_POLL_MS,
   });
 }
 
@@ -52,7 +53,7 @@ export function usePriceHistory(type: string, id: string, lastN = 50) {
   return useQuery({
     queryKey: ["market", "history", type, id],
     queryFn: () => fetchPriceHistory(type, id, lastN),
-    refetchInterval: 10_000,
+    refetchInterval: MARKET_HISTORY_POLL_MS,
     enabled: !!id,
   });
 }
@@ -62,7 +63,7 @@ export function useBatchPriceHistory(queries: HistoryQuery[], lastN = 30) {
   return useQuery({
     queryKey: ["market", "history", "batch", key],
     queryFn: () => fetchBatchHistory(queries, lastN),
-    refetchInterval: 10_000,
+    refetchInterval: MARKET_HISTORY_POLL_MS,
     enabled: queries.length > 0,
   });
 }

@@ -10,6 +10,7 @@ import { getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom, SCANDAL_REASONS } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 // ---------------------------------------------------------------------------
@@ -38,7 +39,7 @@ registerSeedEvent({
   description: "Start a CEO scandal chain",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 60,
+  cooldownTicks: COOLDOWN_TICKS["ceo-scandal"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -97,11 +98,11 @@ registerEvent({
       });
     });
 
-    const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 15));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
 
     return {
       followUpEvents: [
-        { eventName: "ceo-scandal.speculation-wave", metadata: meta, delaySeconds: delay },
+        { eventName: "ceo-scandal.speculation-wave", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -156,11 +157,11 @@ registerEvent({
       }),
     ]);
 
-    const delay = await ctx.run("delay", () => 30 + Math.floor(Math.random() * 30));
+    const delayTicks = await ctx.run("delay", () => 3 + Math.floor(Math.random() * 4));
 
     return {
       followUpEvents: [
-        { eventName: "ceo-scandal.press-conference", metadata: meta, delaySeconds: delay },
+        { eventName: "ceo-scandal.press-conference", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },

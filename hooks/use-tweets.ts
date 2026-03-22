@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { TWEET_POLL_MS } from "@/lib/constants";
 import type { Tweet } from "@/lib/interfaces/types";
 import type { FeedFilter } from "@/stores/feed";
 
@@ -42,7 +43,7 @@ export function useNewTweetCount(afterTs: number) {
   return useQuery({
     queryKey: ["tweets", "new-count", afterTs],
     queryFn: () => fetchNewTweetCount(afterTs),
-    refetchInterval: 10_000,
+    refetchInterval: TWEET_POLL_MS,
     enabled: afterTs > 0,
   });
 }

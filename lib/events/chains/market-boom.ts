@@ -11,6 +11,7 @@ import { market } from "@/lib/market/market";
 import { DM_PERSONAS, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 type SectorId = typeof SECTORS[number]["id"];
@@ -62,7 +63,7 @@ registerSeedEvent({
   description: "Start a market boom event",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 90,
+  cooldownTicks: COOLDOWN_TICKS["market-boom"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -137,10 +138,10 @@ registerEvent({
       await market.updateSectorStatus(meta.sectorId, "bull");
     });
 
-    const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 10));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
     return {
       followUpEvents: [
-        { eventName: "market-boom.euphoria", metadata: meta, delaySeconds: delay },
+        { eventName: "market-boom.euphoria", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },

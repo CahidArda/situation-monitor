@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { DM_POLL_MS } from "@/lib/constants";
 import type { DMConversation, DirectMessage } from "@/lib/interfaces/types";
 
 async function fetchConversations(): Promise<{
@@ -25,7 +26,7 @@ export function useDMConversations() {
   return useQuery({
     queryKey: ["dms", "conversations"],
     queryFn: () => fetchConversations(),
-    refetchInterval: 10_000,
+    refetchInterval: DM_POLL_MS,
   });
 }
 

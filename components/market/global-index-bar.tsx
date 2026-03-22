@@ -4,6 +4,7 @@ import { usePriceHistory } from "@/hooks/use-market";
 import { Sparkline } from "./sparkline";
 import { formatPrice, formatChange, changeColor } from "./format";
 import { HoverableContent } from "@/components/hoverable-content";
+import { CHANGE_LOOKBACK_TICKS, formatTickDuration } from "@/lib/constants";
 import type { CommodityWithPrice } from "@/lib/interfaces/market";
 
 export function GlobalIndexBar({
@@ -29,7 +30,7 @@ export function GlobalIndexBar({
           <span className={`text-sm font-mono ${changeColor(change)}`}>
             {formatChange(change, changePercent)}
           </span>
-          <span className="text-[10px] text-muted-foreground">5-tick (~5m)</span>
+          <span className="text-[10px] text-muted-foreground">{CHANGE_LOOKBACK_TICKS}-tick (~{formatTickDuration(CHANGE_LOOKBACK_TICKS)})</span>
         </div>
       </div>
       {prices.length > 1 && <Sparkline data={prices} width={100} height={24} />}

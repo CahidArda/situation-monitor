@@ -10,6 +10,7 @@ import { getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom, randomProduct } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 const ChainSchema = z.object({
@@ -28,7 +29,7 @@ registerSeedEvent({
   description: "Start a product launch chain",
   schema: z.object({}),
   weight: 4,
-  cooldownSeconds: 50,
+  cooldownTicks: COOLDOWN_TICKS["product-launch"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -102,10 +103,10 @@ registerEvent({
       });
     });
 
-    const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 10));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
     return {
       followUpEvents: [
-        { eventName: "product-launch.reaction-wave", metadata: meta, delaySeconds: delay },
+        { eventName: "product-launch.reaction-wave", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -182,10 +183,10 @@ registerEvent({
       }),
     ]);
 
-    const delay = await ctx.run("delay", () => 20 + Math.floor(Math.random() * 10));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
     return {
       followUpEvents: [
-        { eventName: "product-launch.outcome", metadata: meta, delaySeconds: delay },
+        { eventName: "product-launch.outcome", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },

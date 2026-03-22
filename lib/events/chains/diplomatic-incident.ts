@@ -16,6 +16,7 @@ import {
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";
 import { generateNewsArticle } from "../templates/news";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 const ChainSchema = z.object({
@@ -36,7 +37,7 @@ registerSeedEvent({
   description: "Start a diplomatic incident chain",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 75,
+  cooldownTicks: COOLDOWN_TICKS["diplomatic-incident"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -154,10 +155,10 @@ registerEvent({
       await market.updateSectorIndex(sector.id, currentIndex * 0.92); // ~8% drop
     });
 
-    const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 15));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
     return {
       followUpEvents: [
-        { eventName: "diplomatic-incident.reaction-wave", metadata: meta, delaySeconds: delay },
+        { eventName: "diplomatic-incident.reaction-wave", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -235,10 +236,10 @@ registerEvent({
       }),
     ]);
 
-    const delay = await ctx.run("delay", () => 30 + Math.floor(Math.random() * 30));
+    const delayTicks = await ctx.run("delay", () => 3 + Math.floor(Math.random() * 4));
     return {
       followUpEvents: [
-        { eventName: "diplomatic-incident.resolution", metadata: meta, delaySeconds: delay },
+        { eventName: "diplomatic-incident.resolution", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },

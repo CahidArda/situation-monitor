@@ -4,6 +4,7 @@ import { tweets } from "@/lib/tweets";
 import { PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "@/lib/events/templates/tweets";
+import { COOLDOWN_TICKS } from "@/lib/constants";
 
 const NoiseSchema = z.object({});
 
@@ -12,7 +13,7 @@ registerSeedEvent({
   description: "A persona tweets something unrelated to any chain",
   schema: NoiseSchema,
   weight: 4,
-  cooldownSeconds: 30,
+  cooldownTicks: COOLDOWN_TICKS["noise"],
   handler: async (ctx) => {
     await ctx.run("noise-tweet", async () => {
       const personaTypes = ["shitposter", "analyst", "regular", "insider"] as const;
@@ -51,7 +52,7 @@ registerSeedEvent({
   description: "The time-traveling Venetian merchant tweets",
   schema: NoiseSchema,
   weight: 1, // rare
-  cooldownSeconds: 120, // 2 minute cooldown
+  cooldownTicks: COOLDOWN_TICKS["time-traveler"],
   handler: async (ctx) => {
     await ctx.run("time-traveler-tweet", async () => {
       const persona = getPersona("time-traveler");

@@ -12,6 +12,7 @@ import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
 import { generateDMContent } from "../templates/dms";
 import { generateNewsArticle } from "../templates/news";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 const ChainSchema = z.object({
@@ -29,7 +30,7 @@ registerSeedEvent({
   description: "Start a pump and dump scheme",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 60,
+  cooldownTicks: COOLDOWN_TICKS["pump-and-dump"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -76,10 +77,10 @@ registerEvent({
       });
     });
 
-    const delay = await ctx.run("delay", () => 10 + Math.floor(Math.random() * 10));
+    const delayTicks = await ctx.run("delay", () => 1 + Math.floor(Math.random() * 2));
     return {
       followUpEvents: [
-        { eventName: "pump-and-dump.hype-tweets", metadata: meta, delaySeconds: delay },
+        { eventName: "pump-and-dump.hype-tweets", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -148,10 +149,10 @@ registerEvent({
       }),
     ]);
 
-    const delay = await ctx.run("delay", () => 20 + Math.floor(Math.random() * 20));
+    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 3));
     return {
       followUpEvents: [
-        { eventName: "pump-and-dump.dump", metadata: meta, delaySeconds: delay },
+        { eventName: "pump-and-dump.dump", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },

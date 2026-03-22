@@ -2,11 +2,9 @@ import { nanoid } from "nanoid";
 import { redis } from "./redis";
 import { getDMIndex } from "./search";
 import { getPersona } from "./simulation/personas";
+import { DM_TTL_SECONDS } from "@/lib/constants";
 import type { DirectMessage, DMConversation, DMType, DMMetadata } from "./interfaces/types";
 import type { DMInterface } from "./interfaces/dms";
-
-const DM_TTL = 600; // 10 minutes in seconds
-const DM_MAX_AGE_MS = DM_TTL * 1000;
 
 const index = getDMIndex();
 
@@ -27,12 +25,12 @@ export const dms: DMInterface = {
     };
 
     await redis.json.set(`dm:${dm.id}`, "$", dm);
-    await redis.expire(`dm:${dm.id}`, DM_TTL);
+    await redis.expire(`dm:${dm.id}`, DM_TTL_SECONDS);
     return dm;
   },
 
   async listConversations() {
-    const cutoff = Date.now() - DM_MAX_AGE_MS;
+    const cutoff = Date.now() - DM_TTL_SECONDS * 1000;
     const results = await index.query({
       filter: { timestamp: { $gt: cutoff } },
       orderBy: { timestamp: "DESC" },
@@ -63,7 +61,7 @@ export const dms: DMInterface = {
   async listMessages(personaId, params) {
     const limit = params?.limit ?? 30;
 
-    const cutoff = Date.now() - DM_MAX_AGE_MS;
+    const cutoff = Date.now() - DM_TTL_SECONDS * 1000;
     const filters: Record<string, unknown>[] = [
       { fromPersonaId: { $eq: personaId } },
       { timestamp: { $gt: cutoff } },

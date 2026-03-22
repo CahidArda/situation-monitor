@@ -12,6 +12,7 @@ import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
 import { generateDMContent } from "../templates/dms";
 import { generateNewsArticle } from "../templates/news";
+import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ registerSeedEvent({
   description: "Start an insider trading chain",
   schema: z.object({}),
   weight: 5,
-  cooldownSeconds: 45,
+  cooldownTicks: COOLDOWN_TICKS["insider-trading"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
@@ -103,11 +104,11 @@ registerEvent({
       });
     });
 
-    const delay = await ctx.run("delay", () => 10 + Math.floor(Math.random() * 10));
+    const delayTicks = await ctx.run("delay", () => 1 + Math.floor(Math.random() * 2));
 
     return {
       followUpEvents: [
-        { eventName: "insider-trading.speculative-tweet", metadata: meta, delaySeconds: delay },
+        { eventName: "insider-trading.speculative-tweet", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -163,11 +164,11 @@ registerEvent({
       }),
     ]);
 
-    const delay = await ctx.run("delay", () => 30 + Math.floor(Math.random() * 30));
+    const delayTicks = await ctx.run("delay", () => 3 + Math.floor(Math.random() * 4));
 
     return {
       followUpEvents: [
-        { eventName: "insider-trading.outcome", metadata: meta, delaySeconds: delay },
+        { eventName: "insider-trading.outcome", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
       ],
     };
   },
@@ -225,6 +226,8 @@ registerEvent({
           await market.updateSectorStatus(sectorId, meta.prediction === "up" ? "bull" : "bear");
         })
       ])
+
+      await ctx.sleep(`outcome-delay-${meta.chainId}`, 20);
 
       await Promise.all([
         ctx.run("correct-tweet", async () => {

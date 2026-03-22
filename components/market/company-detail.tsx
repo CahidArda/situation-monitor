@@ -6,6 +6,7 @@ import { usePriceHistory } from "@/hooks/use-market";
 import { Sparkline } from "./sparkline";
 import { formatPrice, formatChange, changeColor } from "./format";
 import { HoverableContent } from "@/components/hoverable-content";
+import { CHANGE_LOOKBACK_TICKS, TICK_DURATION_SECONDS, formatTickDuration } from "@/lib/constants";
 
 export function CompanyDetail({
   company,
@@ -45,7 +46,7 @@ export function CompanyDetail({
               <span className={`font-mono ${changeColor(company.change)}`}>
                 {formatChange(company.change, company.changePercent)}
               </span>
-              <span className="text-xs text-muted-foreground">5-tick (~5m)</span>
+              <span className="text-xs text-muted-foreground">{CHANGE_LOOKBACK_TICKS}-tick (~{formatTickDuration(CHANGE_LOOKBACK_TICKS)})</span>
             </div>
             <h2 className="text-lg text-foreground mt-1">
               <HoverableContent
@@ -60,7 +61,7 @@ export function CompanyDetail({
         {prices.length > 1 && (
           <div className="mb-6 border border-border rounded p-4">
             <div className="text-xs text-muted-foreground mb-2">
-              Price history (last {prices.length} ticks, ~1 tick/min)
+              Price history (last {prices.length} ticks, ~{TICK_DURATION_SECONDS}s/tick)
             </div>
             <Sparkline data={prices} width={500} height={120} showLabels />
           </div>
