@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { redis } from "./redis";
 import { getTweetIndex } from "./search";
+import { buildContentSearchFilter } from "./entity-search";
 import type { Tweet } from "./interfaces/types";
 import type { TweetInterface } from "./interfaces/tweets";
 
@@ -29,7 +30,7 @@ export const tweets: TweetInterface = {
       filters.push({ timestamp: { $lt: beforeTs } });
     }
     if (search) {
-      filters.push({ content: { $smart: search } });
+      filters.push(buildContentSearchFilter(search, "content"));
     }
     if (authorId) {
       filters.push({ authorId: { $eq: authorId } });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 import { playNotificationSound } from "@/lib/sounds";
@@ -18,19 +18,34 @@ export function NewsTab() {
   const { data, isLoading } = useNews(filter);
   const articles = useNewsStore((s) => s.articles);
   const setArticles = useNewsStore((s) => s.setArticles);
+  const prependArticles = useNewsStore((s) => s.prependArticles);
   const selectedArticle = useNewsStore((s) => s.selectedArticle);
   const selectArticle = useNewsStore((s) => s.selectArticle);
+  const clearHighlights = useNewsStore((s) => s.clearHighlights);
 
-  const prevArticleCount = useRef(0);
+  // On initial load or filter change, set articles directly
+  const initialized = useRef(false);
   useEffect(() => {
     if (data?.articles) {
-      if (data.articles.length > prevArticleCount.current && prevArticleCount.current > 0) {
-        playNotificationSound();
+      if (!initialized.current) {
+        setArticles(data.articles);
+        initialized.current = true;
+      } else {
+        // Find new articles not in current list
+        const currentIds = new Set(articles.map((a) => a.id));
+        const newOnes = data.articles.filter((a) => !currentIds.has(a.id));
+        if (newOnes.length > 0) {
+          playNotificationSound();
+          prependArticles(newOnes);
+        }
       }
-      prevArticleCount.current = data.articles.length;
-      setArticles(data.articles);
     }
-  }, [data, setArticles]);
+  }, [data, setArticles, prependArticles, articles]);
+
+  // Reset initialized on filter change
+  useEffect(() => {
+    initialized.current = false;
+  }, [filter]);
 
   // Sync selected article from URL param
   const newsId = searchParams.get("news");
@@ -45,6 +60,10 @@ export function NewsTab() {
     }
   }, [newsId, articles, selectedArticle, selectArticle]);
 
+  const handleInteraction = useCallback(() => {
+    clearHighlights();
+  }, [clearHighlights]);
+
   if (selectedArticle) {
     return (
       <NewsArticleView
@@ -55,7 +74,11 @@ export function NewsTab() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div
+      className="flex flex-col flex-1 min-h-0"
+      onClick={handleInteraction}
+      onScroll={handleInteraction}
+    >
       {filter && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-accent/30 text-sm">
           <span className="text-muted-foreground">Filtered:</span>

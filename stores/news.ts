@@ -11,11 +11,13 @@ type NewsStore = {
   selectedArticle: NewsArticle | null;
   hasMore: boolean;
   filter: NewsFilter | null;
+  highlightedIds: string[];
 
   setArticles: (articles: NewsArticle[]) => void;
   prependArticles: (articles: NewsArticle[]) => void;
   selectArticle: (article: NewsArticle | null) => void;
   setFilter: (filter: NewsFilter | null) => void;
+  clearHighlights: () => void;
 };
 
 export const useNewsStore = create<NewsStore>()((set) => ({
@@ -23,6 +25,7 @@ export const useNewsStore = create<NewsStore>()((set) => ({
   selectedArticle: null,
   hasMore: true,
   filter: null,
+  highlightedIds: [],
 
   setArticles: (articles) =>
     set({ articles, hasMore: articles.length >= 10 }),
@@ -31,10 +34,15 @@ export const useNewsStore = create<NewsStore>()((set) => ({
     set((state) => {
       const existing = new Set(state.articles.map((a) => a.id));
       const unique = newArticles.filter((a) => !existing.has(a.id));
-      return { articles: [...unique, ...state.articles] };
+      return {
+        articles: [...unique, ...state.articles],
+        highlightedIds: [...state.highlightedIds, ...unique.map((a) => a.id)],
+      };
     }),
 
   selectArticle: (article) => set({ selectedArticle: article }),
 
-  setFilter: (filter) => set({ filter, articles: [], selectedArticle: null }),
+  setFilter: (filter) => set({ filter, articles: [], selectedArticle: null, highlightedIds: [] }),
+
+  clearHighlights: () => set({ highlightedIds: [] }),
 }));

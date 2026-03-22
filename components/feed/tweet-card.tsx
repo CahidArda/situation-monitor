@@ -20,10 +20,17 @@ function timeAgo(timestamp: number): string {
 export function TweetCard({ tweet }: { tweet: Tweet }) {
   const toggleLike = useFeedStore((s) => s.toggleLike);
   const likedIds = useFeedStore((s) => s.likedTweetIds);
+  const highlightedIds = useFeedStore((s) => s.highlightedIds);
   const liked = likedIds.includes(tweet.id);
+  const isHighlighted = highlightedIds.includes(tweet.id);
 
   return (
-    <article className="border-b border-border px-4 py-3 hover:bg-accent/30 transition-colors">
+    <article
+      className={cn(
+        "border-b border-border px-4 py-3 hover:bg-accent/30 transition-colors duration-700",
+        isHighlighted && "bg-blue-50",
+      )}
+    >
       <p className="text-base text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed">
         <HoverableContent content={tweet.content} entities={tweet.entities} />
       </p>

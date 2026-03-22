@@ -2,6 +2,8 @@
 
 import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
 import { HoverableContent } from "@/components/hoverable-content";
+import { useNewsStore } from "@/stores/news";
+import { cn } from "@/lib/utils";
 
 function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -29,13 +31,19 @@ export function NewsCard({
   article: NewsArticle;
   onClick: () => void;
 }) {
+  const highlightedIds = useNewsStore((s) => s.highlightedIds);
+  const isHighlighted = highlightedIds.includes(article.id);
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
-      className="w-full text-left border-b border-border px-4 py-4 hover:bg-accent/30 transition-colors cursor-pointer"
+      className={cn(
+        "w-full text-left border-b border-border px-4 py-4 hover:bg-accent/30 transition-colors duration-700 cursor-pointer",
+        isHighlighted && "bg-blue-50",
+      )}
     >
       <h3 className="font-semibold text-foreground leading-snug">
         <HoverableContent content={article.headline} entities={article.entities} />

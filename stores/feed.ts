@@ -16,6 +16,7 @@ interface FeedStore {
   hasMore: boolean;
   likedTweetIds: string[];
   filter: FeedFilter | null;
+  highlightedIds: string[];
 
   setTweets: (tweets: Tweet[]) => void;
   prependTweets: (tweets: Tweet[]) => void;
@@ -25,6 +26,7 @@ interface FeedStore {
   toggleLike: (tweetId: string) => void;
   isLiked: (tweetId: string) => boolean;
   setFilter: (filter: FeedFilter | null) => void;
+  clearHighlights: () => void;
 }
 
 export const useFeedStore = create<FeedStore>()(
@@ -37,6 +39,7 @@ export const useFeedStore = create<FeedStore>()(
       hasMore: true,
       likedTweetIds: [],
       filter: null,
+      highlightedIds: [],
 
       setTweets: (tweets) =>
         set({
@@ -55,6 +58,7 @@ export const useFeedStore = create<FeedStore>()(
           const merged = [...unique, ...state.tweets];
           return {
             tweets: merged,
+            highlightedIds: [...state.highlightedIds, ...unique.map((t) => t.id)],
             latestTimestamp:
               merged.length > 0
                 ? Math.max(...merged.map((t) => t.timestamp))
@@ -91,7 +95,9 @@ export const useFeedStore = create<FeedStore>()(
 
       isLiked: (tweetId) => get().likedTweetIds.includes(tweetId),
 
-      setFilter: (filter) => set({ filter, tweets: [], latestTimestamp: 0, newTweetCount: 0 }),
+      setFilter: (filter) => set({ filter, tweets: [], latestTimestamp: 0, newTweetCount: 0, highlightedIds: [] }),
+
+      clearHighlights: () => set({ highlightedIds: [] }),
     }),
     {
       name: "mts:feed",

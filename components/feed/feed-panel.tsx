@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
-import { useTweets, useNewTweetCount } from "@/hooks/use-tweets";
+import { useTweets, useNewTweetCount, fetchTweets } from "@/hooks/use-tweets";
 import { useFeedStore } from "@/stores/feed";
 import { playNotificationSound } from "@/lib/sounds";
-import { NewTweetsBanner } from "./new-tweets-banner";
 import { TweetList } from "./tweet-list";
 
 export function FeedPanel() {
   const setTweets = useFeedStore((s) => s.setTweets);
-  const setNewTweetCount = useFeedStore((s) => s.setNewTweetCount);
+  const prependTweets = useFeedStore((s) => s.prependTweets);
   const latestTimestamp = useFeedStore((s) => s.latestTimestamp);
   const filter = useFeedStore((s) => s.filter);
   const setFilter = useFeedStore((s) => s.setFilter);
+  const clearHighlights = useFeedStore((s) => s.clearHighlights);
 
   const { data, isLoading } = useTweets(filter);
 
@@ -23,21 +23,34 @@ export function FeedPanel() {
     }
   }, [data, setTweets]);
 
+  // Poll for new tweets and auto-prepend them
   const { data: countData } = useNewTweetCount(
-    filter ? 0 : latestTimestamp, // disable polling when filtered
+    filter ? 0 : latestTimestamp,
   );
 
   const prevCount = useRef(0);
   useEffect(() => {
-    if (countData != null) {
-      if (countData > prevCount.current) playNotificationSound();
-      prevCount.current = countData;
-      setNewTweetCount(countData);
+    if (countData != null && countData > prevCount.current && latestTimestamp > 0) {
+      playNotificationSound();
+      // Auto-fetch and prepend new tweets
+      fetchTweets({ afterTs: latestTimestamp }).then(({ tweets: newTweets }) => {
+        if (newTweets.length > 0) prependTweets(newTweets);
+      });
     }
-  }, [countData, setNewTweetCount]);
+    if (countData != null) prevCount.current = countData;
+  }, [countData, latestTimestamp, prependTweets]);
+
+  // Clear highlights on any user interaction
+  const handleInteraction = useCallback(() => {
+    clearHighlights();
+  }, [clearHighlights]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div
+      className="flex flex-col flex-1 min-h-0"
+      onClick={handleInteraction}
+      onScroll={handleInteraction}
+    >
       {filter && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-accent/30 text-sm">
           <span className="text-muted-foreground">Filtered:</span>
@@ -50,7 +63,6 @@ export function FeedPanel() {
           </button>
         </div>
       )}
-      {!filter && <NewTweetsBanner />}
       <TweetList isLoading={isLoading} />
     </div>
   );

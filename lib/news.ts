@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { redis } from "./redis";
 import { getNewsIndex } from "./search";
+import { expandSearchTerms } from "./entity-search";
 import type { NewsArticle } from "./interfaces/types";
 import type { NewsInterface } from "./interfaces/news";
 
@@ -31,11 +32,13 @@ export const news: NewsInterface = {
       filters.push({ category: { $eq: category } });
     }
     if (search) {
+      const terms = expandSearchTerms(search);
+      const smartFilters = terms.flatMap((t) => [
+        { headline: { $eq: t } },
+        { summary: { $eq: t } },
+      ]);
       filters.push({
-        $should: [
-          { headline: { $smart: search } },
-          { summary: { $smart: search } },
-        ],
+        $should: smartFilters,
       });
     }
 
