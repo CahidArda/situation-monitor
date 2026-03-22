@@ -4,6 +4,7 @@ import type { NewsArticle, NewsCategory } from "@/lib/interfaces/types";
 import { ArrowLeft } from "lucide-react";
 import { HoverableContent } from "@/components/hoverable-content";
 import { useMarketStore } from "@/stores/market";
+import { useNavigateToMarket } from "@/hooks/use-tab";
 import { formatPrice, formatChange, changeColor } from "@/components/market/format";
 
 const CATEGORY_COLORS: Record<NewsCategory, string> = {
@@ -24,6 +25,7 @@ export function NewsArticleView({
 }) {
   const companies = useMarketStore((s) => s.companies);
   const sectors = useMarketStore((s) => s.sectors);
+  const navigateToMarket = useNavigateToMarket();
 
   // Find related companies and sectors from entities
   const relatedCompanies = companies.filter((c) =>
@@ -83,25 +85,27 @@ export function NewsArticleView({
             {relatedCompanies.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-2">
                 {relatedCompanies.map((c) => (
-                  <div
+                  <button
                     key={c.id}
-                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5"
+                    onClick={() => navigateToMarket({ ticker: c.ticker })}
+                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5 hover:bg-accent/30 transition-colors cursor-pointer"
                   >
                     <span className="font-mono font-semibold">{c.ticker}</span>
                     <span className="font-mono">${formatPrice(c.currentPrice)}</span>
                     <span className={`font-mono text-xs ${changeColor(c.change)}`}>
                       {formatChange(c.change, c.changePercent)}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
             {relatedSectors.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {relatedSectors.map((s) => (
-                  <div
+                  <button
                     key={s.id}
-                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5"
+                    onClick={() => navigateToMarket({ sector: s.id })}
+                    className="flex items-center gap-2 text-sm border border-border rounded px-3 py-1.5 hover:bg-accent/30 transition-colors cursor-pointer"
                   >
                     <span className="font-medium">{s.name}</span>
                     <span className={`font-mono ${changeColor(s.indexValue - 100)}`}>
@@ -110,7 +114,7 @@ export function NewsArticleView({
                     <span className="text-[10px] px-1 py-0.5 rounded bg-slate-100 text-slate-600">
                       {s.status}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

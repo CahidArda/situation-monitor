@@ -70,7 +70,8 @@ export function TickerTape() {
     })),
   ];
 
-  const latestNews = articles.slice(0, 3);
+  // Show only the latest news headline (avoid spamming BREAKING items)
+  const latestNews = articles.slice(0, 1);
 
   if (tickers.length === 0 && latestNews.length === 0) return null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useDMMessages } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
@@ -56,6 +56,14 @@ export function MessageThread({
     markRead(personaId);
   }, [personaId, markRead]);
 
+  // Scroll to bottom when messages load
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current && messages.length > 0) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border px-4 py-3 flex items-center gap-3">
@@ -77,7 +85,7 @@ export function MessageThread({
         </UserPopover>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col py-2">
         {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
