@@ -195,41 +195,44 @@ export const SCANDAL_REASONS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Diplomatic causes (randomly generated from subject + dispute)
+// Diplomatic causes (randomly generated from topic + escalation)
+// Any topic can pair with any escalation and still make sense.
 // ---------------------------------------------------------------------------
 
-const DIPLOMATIC_SUBJECTS = [
-  "a cheese tariff",
+/** The thing the countries are arguing about */
+const DIPLOMATIC_TOPICS = [
+  "cheese tariffs",
   "fishing rights",
-  "an ambassador's cat",
-  "a national bird",
-  "a timezone",
-  "a flag placement",
-  "a pronunciation",
-  "a goat island",
-  "a potato export",
-  "a bridge naming",
-  "a royal wedding invitation",
-  "a submarine cable",
+  "a national bird designation",
+  "timezone boundaries",
+  "potato export quotas",
+  "a disputed bridge name",
+  "olive oil grading standards",
+  "the correct way to brew tea",
+  "goat grazing rights",
+  "a submarine cable route",
+  "migratory bird flight paths",
+  "the ownership of a tiny uninhabited island",
 ];
 
-const DIPLOMATIC_DISPUTES = [
-  "dispute that escalated into sanctions",
-  "disagreement that recalled both ambassadors",
-  "violation involving a single trout",
-  "debate that shut down all trade talks",
-  "incident that scratched a priceless painting",
-  "controversy over correct pronunciation of 'croissant'",
-  "argument over whose turn it was to host the summit",
-  "misunderstanding involving an uninhabited island",
-  "scandal after a leaked diplomatic memo",
-  "crisis triggered by an accidental airstrike on a hay bale",
+/** How the argument escalated — works with any topic */
+const DIPLOMATIC_ESCALATIONS = [
+  "after both sides recalled their ambassadors",
+  "leading to a full trade embargo",
+  "resulting in a strongly worded letter to the UN",
+  "causing both nations to cancel a joint summit",
+  "after a leaked diplomatic cable went viral",
+  "prompting emergency sessions in both parliaments",
+  "after a diplomat slammed a table and stormed out",
+  "with sanctions threatened by both sides",
+  "after negotiations collapsed in under 4 minutes",
+  "sparking protests outside both embassies",
 ];
 
 export function randomDiplomaticCause(): string {
-  const subject = DIPLOMATIC_SUBJECTS[Math.floor(Math.random() * DIPLOMATIC_SUBJECTS.length)];
-  const dispute = DIPLOMATIC_DISPUTES[Math.floor(Math.random() * DIPLOMATIC_DISPUTES.length)];
-  return `${subject} ${dispute}`;
+  const topic = DIPLOMATIC_TOPICS[Math.floor(Math.random() * DIPLOMATIC_TOPICS.length)];
+  const escalation = DIPLOMATIC_ESCALATIONS[Math.floor(Math.random() * DIPLOMATIC_ESCALATIONS.length)];
+  return `${topic} ${escalation}`;
 }
 
 // ---------------------------------------------------------------------------
