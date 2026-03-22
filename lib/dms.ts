@@ -5,6 +5,9 @@ import { getPersona } from "./simulation/personas";
 import type { DirectMessage, DMConversation, DMType, DMMetadata } from "./interfaces/types";
 import type { DMInterface } from "./interfaces/dms";
 
+const DM_TTL = 600; // 10 minutes in seconds
+const DM_MAX_AGE_MS = DM_TTL * 1000;
+
 const index = getDMIndex();
 
 export const dms: DMInterface = {
@@ -24,14 +27,14 @@ export const dms: DMInterface = {
     };
 
     await redis.json.set(`dm:${dm.id}`, "$", dm);
+    await redis.expire(`dm:${dm.id}`, DM_TTL);
     return dm;
   },
 
   async listConversations() {
-    // Get all DMs, grouped by persona. We query a generous limit
-    // and deduplicate client-side. For a production app with many DMs
-    // we'd use aggregation, but this is fine for the simulation scale.
+    const cutoff = Date.now() - DM_MAX_AGE_MS;
     const results = await index.query({
+      filter: { timestamp: { $gt: cutoff } },
       orderBy: { timestamp: "DESC" },
       limit: 200,
     });
@@ -60,8 +63,10 @@ export const dms: DMInterface = {
   async listMessages(personaId, params) {
     const limit = params?.limit ?? 30;
 
+    const cutoff = Date.now() - DM_MAX_AGE_MS;
     const filters: Record<string, unknown>[] = [
       { fromPersonaId: { $eq: personaId } },
+      { timestamp: { $gt: cutoff } },
     ];
 
     if (params?.beforeTs != null) {

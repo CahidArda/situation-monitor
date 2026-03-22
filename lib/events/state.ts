@@ -56,8 +56,10 @@ export async function setSectorIndex(
 }
 
 // ---------------------------------------------------------------------------
-// Active chains
+// Active chains (TTL-based so orphaned chains auto-expire)
 // ---------------------------------------------------------------------------
+
+const CHAIN_TTL = 300; // 5 minutes — chains that don't finish auto-expire
 
 export async function getActiveChains(): Promise<string[]> {
   return (await redis.smembers("sim:active_chains")) ?? [];
@@ -65,12 +67,27 @@ export async function getActiveChains(): Promise<string[]> {
 
 export async function addActiveChain(chainId: string): Promise<void> {
   await redis.sadd("sim:active_chains", chainId);
+  // Also set a TTL key — if the chain doesn't finish, it auto-expires
+  await redis.set(`sim:chain:${chainId}`, 1, { ex: CHAIN_TTL });
 }
 
 export async function removeActiveChain(chainId: string): Promise<void> {
   await redis.srem("sim:active_chains", chainId);
+  await redis.del(`sim:chain:${chainId}`);
 }
 
 export async function getActiveChainCount(): Promise<number> {
-  return (await redis.scard("sim:active_chains")) ?? 0;
+  // Clean up expired chains from the set
+  const chains = await getActiveChains();
+  let count = 0;
+  for (const chainId of chains) {
+    const alive = await redis.exists(`sim:chain:${chainId}`);
+    if (alive) {
+      count++;
+    } else {
+      // TTL expired — chain is orphaned, remove from set
+      await redis.srem("sim:active_chains", chainId);
+    }
+  }
+  return count;
 }

@@ -236,7 +236,7 @@ const tweetTemplates: {
     ],
     shitposter: [
       (p) =>
-        `${p.country1} and ${p.country2} beefing over ${p.issue} is the most 2024 thing ever 💀`,
+        `${p.country1} and ${p.country2} beefing over ${p.issue} is the most 2026 thing ever 💀`,
       (p) =>
         `markets when two countries argue about ${p.issue}: 📉📉📉\nme: 🍿`,
     ],
