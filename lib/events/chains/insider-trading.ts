@@ -132,20 +132,21 @@ registerEvent({
       ] : []),
     ];
 
+    // Insider tweets first, then reactions
+    await ctx.run("insider-tweet", async () => {
+      if (!insider) return;
+      const content = generateTweetContent("insider-rumor", insider.type, { ticker: meta.ticker });
+      await tweets.write({
+        authorId: insider.id,
+        authorHandle: insider.handle,
+        authorDisplayName: insider.displayName,
+        content,
+        eventChainId: meta.chainId,
+        entities,
+      });
+    });
+
     await Promise.all([
-      ctx.run("insider-tweet", async () => {
-        const insider = getPersona(meta.insiderPersonaId);
-        if (!insider) return;
-        const content = generateTweetContent("insider-rumor", insider.type, { ticker: meta.ticker });
-        await tweets.write({
-          authorId: insider.id,
-          authorHandle: insider.handle,
-          authorDisplayName: insider.displayName,
-          content,
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
       ctx.run("reaction-tweet", async () => {
         const regulars = getPersonasByType("regular");
         if (regulars.length === 0) return;
