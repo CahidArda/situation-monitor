@@ -229,10 +229,10 @@ const DIPLOMATIC_ESCALATIONS = [
   "sparking protests outside both embassies",
 ];
 
-export function randomDiplomaticCause(): string {
+export function randomDiplomaticCause(): { topic: string; escalation: string } {
   const topic = DIPLOMATIC_TOPICS[Math.floor(Math.random() * DIPLOMATIC_TOPICS.length)];
   const escalation = DIPLOMATIC_ESCALATIONS[Math.floor(Math.random() * DIPLOMATIC_ESCALATIONS.length)];
-  return `${topic} ${escalation}`;
+  return { topic, escalation };
 }
 
 // ---------------------------------------------------------------------------

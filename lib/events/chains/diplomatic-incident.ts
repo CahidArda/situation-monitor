@@ -28,7 +28,8 @@ interface ChainMeta {
   country1: string;
   country2: string;
   city: string;
-  issue: string;
+  topic: string;       // what they're arguing about: "cheese tariffs"
+  escalation: string;  // how it got worse: "after both sides recalled their ambassadors"
   affectedSector: string;
   affectedSectorId: string;
   willResolve: boolean;
@@ -54,9 +55,9 @@ async function onResolve(ctx: WorkflowContext, meta: ChainMeta) {
     if (newsPersonas.length === 0) return;
     const org = pickRandom(newsPersonas);
     await news.write({
-      headline: `${meta.country1} and ${meta.country2} Reach Agreement on ${meta.issue}`,
+      headline: `${meta.country1} and ${meta.country2} Reach Agreement on ${meta.topic}`,
       summary: `Tensions eased as both nations agreed to a compromise described as "absurd but workable."`,
-      body: `In a surprise development, ${meta.country1} and ${meta.country2} announced a resolution to the dispute over ${meta.issue}.\n\nThe compromise involves what diplomats are calling "creative concessions on both sides." Details remain vague.\n\nThe ${meta.affectedSector} sector recovered on the news.`,
+      body: `In a surprise development, ${meta.country1} and ${meta.country2} announced a resolution to the dispute over ${meta.topic}.\n\nThe compromise involves what diplomats are calling "creative concessions on both sides." Details remain vague.\n\nThe ${meta.affectedSector} sector recovered on the news.`,
       category: "world",
       source: org.id,
       sourceDisplayName: org.displayName,
@@ -73,7 +74,7 @@ async function onResolve(ctx: WorkflowContext, meta: ChainMeta) {
       authorId: persona.id,
       authorHandle: persona.handle,
       authorDisplayName: persona.displayName,
-      content: `${meta.country1} and ${meta.country2} made up over ${meta.issue}. well that was dramatic for nothing 💀`,
+      content: `${meta.country1} and ${meta.country2} made up over ${meta.topic}. well that was dramatic for nothing 💀`,
       eventChainId: meta.chainId,
       entities,
     });
@@ -93,9 +94,9 @@ async function onProlong(ctx: WorkflowContext, meta: ChainMeta) {
     if (newsPersonas.length === 0) return;
     const org = pickRandom(newsPersonas);
     await news.write({
-      headline: `${meta.country1}-${meta.country2} Dispute Over ${meta.issue} Enters New Phase`,
+      headline: `${meta.country1}-${meta.country2} Dispute Over ${meta.topic} Enters New Phase`,
       summary: `No resolution in sight as both nations dig in. The ${meta.affectedSector} sector remains volatile.`,
-      body: `The dispute between ${meta.country1} and ${meta.country2} over ${meta.issue} showed no signs of abating today.\n\nBoth governments have recalled ambassadors for "consultations." The ${meta.affectedSector} sector continues to feel the impact.\n\nAnalysts warn this could drag on for weeks.`,
+      body: `The dispute between ${meta.country1} and ${meta.country2} over ${meta.topic} showed no signs of abating today.\n\nBoth governments have recalled ambassadors for "consultations." The ${meta.affectedSector} sector continues to feel the impact.\n\nAnalysts warn this could drag on for weeks.`,
       category: "world",
       source: org.id,
       sourceDisplayName: org.displayName,
@@ -143,7 +144,7 @@ export const diplomaticIncident: SeedEventDefinition = {
         country1: c1.name,
         country2: c2.name,
         city: pickRandom(c1.cities),
-        issue: randomDiplomaticCause(),
+        ...randomDiplomaticCause(),
         affectedSector: sector.name,
         affectedSectorId: sector.id,
         willResolve: Math.random() < 0.7,
@@ -161,7 +162,7 @@ export const diplomaticIncident: SeedEventDefinition = {
     await applyMarketImpact(ctx, meta.affectedSectorId, -8, "volatile");
 
     // Write news first to get article ID for tweet newsLink
-    const headline = `${meta.country1} and ${meta.country2} Clash Over ${meta.issue}`;
+    const headline = `${meta.country1} and ${meta.country2} Clash Over ${meta.topic}`;
     const newsArticle = await ctx.run("news-article", async () => {
       const newsPersonas = getPersonasByType("news");
       if (newsPersonas.length === 0) return null;
@@ -172,14 +173,14 @@ export const diplomaticIncident: SeedEventDefinition = {
         country1: meta.country1,
         country2: meta.country2,
         city: meta.city,
-        issue: meta.issue,
-        incident: meta.issue,
+        issue: meta.topic,
+        incident: `a dispute over ${meta.topic} ${meta.escalation}`,
         official1Name: official1,
         official1Title: "Minister of Foreign Affairs",
         official2Name: official2,
         quote1: "completely unacceptable and frankly embarrassing",
         quote2: "a gross overreaction to a minor misunderstanding",
-        issueDetail: `overlapping claims related to ${meta.issue}`,
+        issueDetail: `overlapping claims related to ${meta.topic}`,
         previousIncident: "last year's trade tariff disagreement",
         affectedSectors: meta.affectedSector,
         mainIndex: "Global",
@@ -202,7 +203,7 @@ export const diplomaticIncident: SeedEventDefinition = {
       const content = generateTweetContent("diplomatic-incident", "news", {
         country1: meta.country1,
         country2: meta.country2,
-        issue: meta.issue,
+        issue: meta.topic,
         sector: meta.affectedSector,
       });
       await tweets.write({
@@ -244,7 +245,7 @@ export const diplomaticIncident: SeedEventDefinition = {
       const content = generateTweetContent("diplomatic-incident", "analyst", {
         country1: meta.country1,
         country2: meta.country2,
-        issue: meta.issue,
+        issue: meta.topic,
         sector: meta.affectedSector,
       });
       await tweets.write({
@@ -264,7 +265,7 @@ export const diplomaticIncident: SeedEventDefinition = {
       const content = generateTweetContent("diplomatic-incident", "shitposter", {
         country1: meta.country1,
         country2: meta.country2,
-        issue: meta.issue,
+        issue: meta.topic,
         sector: meta.affectedSector,
       });
       await tweets.write({
@@ -284,7 +285,7 @@ export const diplomaticIncident: SeedEventDefinition = {
       const content = generateTweetContent("diplomatic-incident", "regular", {
         country1: meta.country1,
         country2: meta.country2,
-        issue: meta.issue,
+        issue: meta.topic,
         sector: meta.affectedSector,
       });
       await tweets.write({
