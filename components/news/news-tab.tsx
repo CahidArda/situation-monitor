@@ -85,7 +85,7 @@ export function NewsTab() {
           <span className="font-medium text-foreground">{filter.label}</span>
           <button
             onClick={() => setFilter(null)}
-            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+            className="ml-auto text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-3.5 w-3.5" />
           </button>

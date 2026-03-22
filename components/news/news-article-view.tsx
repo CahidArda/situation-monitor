@@ -46,7 +46,7 @@ export function NewsArticleView({
       <div className="border-b border-border px-4 py-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to news

@@ -69,7 +69,7 @@ export function MessageThread({
       <div className="border-b border-border px-4 py-3 flex items-center gap-3">
         <button
           onClick={onBack}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -85,7 +85,7 @@ export function MessageThread({
         </UserPopover>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col py-2 pb-32">
         {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
