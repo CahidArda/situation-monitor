@@ -63,43 +63,44 @@ registerEvent({
       { text: meta.product, type: "commodity" },
     ];
 
-    await Promise.all([
-      ctx.run("announcement-news", async () => {
-        const newsPersonas = getPersonasByType("news");
-        if (newsPersonas.length === 0) return;
-        const org = pickRandom(newsPersonas);
-        const analystName = randomName();
-        await news.write({
-          headline: `${meta.companyName} Unveils ${meta.product} to Mixed Reactions`,
-          summary: `${meta.companyName} (${meta.ticker}) announced its latest product. Industry observers are divided.`,
-          body: `${meta.companyName} surprised markets today with the announcement of its newest offering: ${meta.product}.\n\n"This is either brilliant or completely insane," said ${analystName}, an industry analyst. "Possibly both."\n\n${meta.ticker} shares moved on the news as investors tried to determine whether ${meta.product} represents genuine innovation or a late-night fever dream from the C-suite.`,
-          category: "business",
-          source: org.id,
-          sourceDisplayName: org.displayName,
-          entities: [...entities, { text: analystName, type: "person" as const }],
-        });
-      }),
-      ctx.run("official-tweet", async () => {
-        const officials = getPersonasByType("official");
-        const newsPersonas = getPersonasByType("news");
-        const persona = officials.length > 0 ? pickRandom(officials) : newsPersonas.length > 0 ? pickRandom(newsPersonas) : null;
-        if (!persona) return;
-        const content = generateTweetContent("product-launch", "news", {
-          company: meta.companyName,
-          product: meta.product,
-          direction: meta.isHit ? "up" : "down",
-          percent: String(Math.floor(Math.random() * 5 + 1)),
-        });
-        await tweets.write({
-          authorId: persona.id,
-          authorHandle: persona.handle,
-          authorDisplayName: persona.displayName,
-          content,
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
-    ]);
+    const headline = `${meta.companyName} Unveils ${meta.product} to Mixed Reactions`;
+    const newsArticle = await ctx.run("announcement-news", async () => {
+      const newsPersonas = getPersonasByType("news");
+      if (newsPersonas.length === 0) return null;
+      const org = pickRandom(newsPersonas);
+      const analystName = randomName();
+      return news.write({
+        headline,
+        summary: `${meta.companyName} (${meta.ticker}) announced its latest product. Industry observers are divided.`,
+        body: `${meta.companyName} surprised markets today with the announcement of its newest offering: ${meta.product}.\n\n"This is either brilliant or completely insane," said ${analystName}, an industry analyst. "Possibly both."\n\n${meta.ticker} shares moved on the news as investors tried to determine whether ${meta.product} represents genuine innovation or a late-night fever dream from the C-suite.`,
+        category: "business",
+        source: org.id,
+        sourceDisplayName: org.displayName,
+        entities: [...entities, { text: analystName, type: "person" as const }],
+      });
+    });
+
+    await ctx.run("official-tweet", async () => {
+      const officials = getPersonasByType("official");
+      const newsPersonas = getPersonasByType("news");
+      const persona = officials.length > 0 ? pickRandom(officials) : newsPersonas.length > 0 ? pickRandom(newsPersonas) : null;
+      if (!persona) return;
+      const content = generateTweetContent("product-launch", "news", {
+        company: meta.companyName,
+        product: meta.product,
+        direction: meta.isHit ? "up" : "down",
+        percent: String(Math.floor(Math.random() * 5 + 1)),
+      });
+      await tweets.write({
+        authorId: persona.id,
+        authorHandle: persona.handle,
+        authorDisplayName: persona.displayName,
+        content,
+        eventChainId: meta.chainId,
+        entities,
+        newsLink: newsArticle ? { newsId: newsArticle.id, headline } : undefined,
+      });
+    });
 
     const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 10));
     return {

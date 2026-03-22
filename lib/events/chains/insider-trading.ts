@@ -200,6 +200,32 @@ registerEvent({
       const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 12 + 3));
 
       await Promise.all([
+        ctx.run("news-article", async () => {
+          const newsPersonas = getPersonasByType("news");
+          if (newsPersonas.length === 0) return;
+          const newsOrg = pickRandom(newsPersonas);
+          const article = generateNewsArticle("insider-activity", {
+            company: meta.companyName,
+            ticker: meta.ticker,
+            direction: meta.prediction,
+            percent: String(movePercent),
+          });
+          await news.write({
+            ...article,
+            source: newsOrg.id, sourceDisplayName: newsOrg.displayName, entities,
+          });
+        }),
+        ctx.run("market-impact", async () => {
+          const company = COMPANIES.find((c) => c.id === meta.companyId);
+          if (!company || company.sectors.length === 0) return;
+          const sectorId = company.sectors[0].sectorId;
+          const currentIndex = await getSectorIndex(sectorId);
+          const factor = meta.prediction === "up" ? (1 + movePercent / 100) : (1 - movePercent / 100);
+          await market.updateSectorIndex(sectorId, currentIndex * factor);
+        })
+      ])
+
+      await Promise.all([
         ctx.run("correct-tweet", async () => {
           const content = generateTweetContent("insider-correct", insider.type, {
             ticker: meta.ticker,
@@ -245,32 +271,7 @@ registerEvent({
             content: reaction, eventChainId: meta.chainId, entities,
           });
         }),
-        ctx.run("news-article", async () => {
-          const newsPersonas = getPersonasByType("news");
-          if (newsPersonas.length === 0) return;
-          const newsOrg = pickRandom(newsPersonas);
-          const article = generateNewsArticle("insider-activity", {
-            company: meta.companyName,
-            ticker: meta.ticker,
-            direction: meta.prediction,
-            percent: String(movePercent),
-          });
-          await news.write({
-            ...article,
-            source: newsOrg.id, sourceDisplayName: newsOrg.displayName, entities,
-          });
-        }),
       ]);
-
-      // Apply the same move to the sector index
-      await ctx.run("market-impact", async () => {
-        const company = COMPANIES.find((c) => c.id === meta.companyId);
-        if (!company || company.sectors.length === 0) return;
-        const sectorId = company.sectors[0].sectorId;
-        const currentIndex = await getSectorIndex(sectorId);
-        const factor = meta.prediction === "up" ? (1 + movePercent / 100) : (1 - movePercent / 100);
-        await market.updateSectorIndex(sectorId, currentIndex * factor);
-      });
     } else {
       await Promise.all([
         ctx.run("wrong-tweet", async () => {
