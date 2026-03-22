@@ -49,13 +49,15 @@ export function MarketTab() {
     }
   }, [tickerParam, companies, selectCompany]);
 
-  const sectorInitialized = useRef(false);
+  const prevSectorParam = useRef<string | null>(null);
   useEffect(() => {
-    if (sectorParam && !sectorInitialized.current) {
-      sectorInitialized.current = true;
-      toggleSector(sectorParam);
+    if (sectorParam && sectorParam !== prevSectorParam.current) {
+      prevSectorParam.current = sectorParam;
+      if (!selectedSectorIds.includes(sectorParam)) {
+        toggleSector(sectorParam);
+      }
     }
-  }, [sectorParam, toggleSector]);
+  }, [sectorParam, selectedSectorIds, toggleSector]);
 
   // Company detail view
   if (selectedCompanyId) {

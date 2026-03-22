@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { SectorWithState } from "@/lib/interfaces/market";
 import { useMarketStore } from "@/stores/market";
 import { useBatchPriceHistory } from "@/hooks/use-market";
@@ -17,6 +18,19 @@ const STATUS_BADGE: Record<string, string> = {
 export function SectorRow({ sectors }: { sectors: SectorWithState[] }) {
   const selectedSectorIds = useMarketStore((s) => s.selectedSectorIds);
   const toggleSector = useMarketStore((s) => s.toggleSector);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleToggle = (sectorId: string) => {
+    toggleSector(sectorId);
+    // Clear the sector query param when manually toggling
+    if (searchParams.get("sector")) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("sector");
+      router.replace(`${pathname}?${params}`);
+    }
+  };
 
   const queries = useMemo(
     () => sectors.map((s) => ({ type: "sector", id: s.id })),
@@ -43,7 +57,7 @@ export function SectorRow({ sectors }: { sectors: SectorWithState[] }) {
         return (
           <button
             key={sector.id}
-            onClick={() => toggleSector(sector.id)}
+            onClick={() => handleToggle(sector.id)}
             className={cn(
               "shrink-0 px-3 py-1.5 rounded text-xs transition-colors cursor-pointer",
               isSelected
