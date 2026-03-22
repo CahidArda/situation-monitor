@@ -21,6 +21,7 @@ export const CHANGE_LOOKBACK_TICKS = 5;
 export const COOLDOWN_TICKS = {
   noise: 3,                // 30s
   "time-traveler": 12,    // 2 min
+  "yoda-trader": 15,      // 2.5 min
   "insider-trading": 5,   // 50s
   "ceo-scandal": 6,       // 60s
   "diplomatic-incident": 8, // 80s

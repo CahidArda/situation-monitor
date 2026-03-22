@@ -41,6 +41,39 @@ const TIME_TRAVELER_TWEETS = [
   "A merchant in my time who lost this much gold would have been banished to sea. You call it 'Tuesday.'",
 ];
 
+// Easter egg: Yoda the market sage
+const YODA_TWEETS = [
+  "Buy the dip, you must. Sell high, you will. Patience, a Jedi investor requires.",
+  "Strong with the Force, this sector is. But cloud the future, volatility does.",
+  "Fear leads to selling. Selling leads to loss. Loss leads to suffering. Hold, you must.",
+  "Much to learn, you still have. The market, a great teacher it is. Expensive too.",
+  "Hmm. Green candles, I see. Red candles also. Unclear, the chart is.",
+  "Do or do not buy this dip. There is no 'limit order.'",
+  "A great disturbance in the market, I feel. As if millions of portfolios cried out in terror.",
+  "Judge a stock by its ticker, do not. Judge it by its fundamentals, you should. Read them, I have not.",
+  "When 900 years of trading experience you have, look this good your portfolio will not.",
+  "The dark side of leverage, beware. Quick gains it promises. Margin calls it delivers.",
+];
+
+export const yodaTrader: SeedEventDefinition = {
+  name: "noise.yoda-trader",
+  description: "Yoda dispenses cryptic market wisdom",
+  weight: 1,
+  cooldownTicks: COOLDOWN_TICKS["yoda-trader"],
+  handler: async (ctx) => {
+    await ctx.run("yoda-tweet", async () => {
+      const persona = getPersona("yoda-trader");
+      if (!persona) return;
+      await tweets.write({
+        authorId: persona.id,
+        authorHandle: persona.handle,
+        authorDisplayName: persona.displayName,
+        content: pickRandom(YODA_TWEETS),
+      });
+    });
+  },
+};
+
 export const timeTraveler: SeedEventDefinition = {
   name: "noise.time-traveler",
   description: "The time-traveling Venetian merchant tweets",

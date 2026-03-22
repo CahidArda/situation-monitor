@@ -189,6 +189,14 @@ export const PERSONAS: Persona[] = [
     traits: ["archaic", "confused", "enthusiastic"],
     sectors: ["shipping", "luxury"],
   },
+  {
+    id: "yoda-trader",
+    handle: "@TradeOrTradeNot",
+    displayName: "Master Trader 🧘",
+    type: "shitposter",
+    bio: "900 years of market wisdom, I have. Do or do not, there is no stop-loss.",
+    traits: ["wise", "inverted-speech", "cryptic"],
+  },
 ];
 
 /** DM-sending personas (subset of the above) and their accuracy ratings. */
@@ -206,7 +214,7 @@ export function getPersona(id: string): Persona | undefined {
 }
 
 /** IDs of Easter egg personas excluded from random selection in chains */
-const EASTER_EGG_IDS = new Set(["time-traveler"]);
+const EASTER_EGG_IDS = new Set(["time-traveler", "yoda-trader"]);
 
 export function getPersonasByType(type: Persona["type"]): Persona[] {
   return PERSONAS.filter((p) => p.type === type && !EASTER_EGG_IDS.has(p.id));

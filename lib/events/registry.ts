@@ -6,7 +6,7 @@ import type { SeedEventDefinition } from "@/lib/interfaces/events";
 // All seed events — imported directly, no registration needed
 // ---------------------------------------------------------------------------
 
-import { noiseTweet, timeTraveler } from "./chains/noise";
+import { noiseTweet, timeTraveler, yodaTrader } from "./chains/noise";
 import { insiderTrading } from "./chains/insider-trading";
 import { ceoScandal } from "./chains/ceo-scandal";
 import { diplomaticIncident } from "./chains/diplomatic-incident";
@@ -17,6 +17,7 @@ import { marketBoom } from "./chains/market-boom";
 const ALL_SEEDS: SeedEventDefinition[] = [
   noiseTweet,
   timeTraveler,
+  yodaTrader,
   insiderTrading,
   ceoScandal,
   diplomaticIncident,
