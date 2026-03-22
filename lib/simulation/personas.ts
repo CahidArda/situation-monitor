@@ -205,6 +205,9 @@ export function getPersona(id: string): Persona | undefined {
   return PERSONAS.find((p) => p.id === id);
 }
 
+/** IDs of Easter egg personas excluded from random selection in chains */
+const EASTER_EGG_IDS = new Set(["time-traveler"]);
+
 export function getPersonasByType(type: Persona["type"]): Persona[] {
-  return PERSONAS.filter((p) => p.type === type);
+  return PERSONAS.filter((p) => p.type === type && !EASTER_EGG_IDS.has(p.id));
 }
