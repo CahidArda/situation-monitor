@@ -79,4 +79,5 @@ export async function loadAllChains() {
   await import("./chains/diplomatic-incident");
   await import("./chains/pump-and-dump");
   await import("./chains/product-launch");
+  await import("./chains/market-boom");
 }
