@@ -54,20 +54,23 @@ async function getSectorIndexes(): Promise<Record<string, number>> {
   return indexes;
 }
 
+const CHANGE_LOOKBACK = 5; // compare current price to 5 ticks ago (~5 minutes)
+
 async function getPreviousPrices(): Promise<Record<string, number>> {
   const prices: Record<string, number> = {};
   const tick = await getMarketTick();
-  if (tick <= 1) return prices;
+  if (tick <= CHANGE_LOOKBACK) return prices;
 
-  // Read all previous prices in parallel
+  // Read prices from CHANGE_LOOKBACK ticks ago in parallel
+  const offset = -(CHANGE_LOOKBACK + 1); // 0-indexed from end
   const [companyResults, commodityResults, globalPrev] = await Promise.all([
     Promise.all(COMPANIES.map((c) =>
-      redis.zrange<string[]>(`market:history:company:${c.id}`, -2, -2),
+      redis.zrange<string[]>(`market:history:company:${c.id}`, offset, offset),
     )),
     Promise.all(COMMODITIES.map((c) =>
-      redis.zrange<string[]>(`market:history:commodity:${c.id}`, -2, -2),
+      redis.zrange<string[]>(`market:history:commodity:${c.id}`, offset, offset),
     )),
-    redis.zrange<string[]>("market:history:global", -2, -2),
+    redis.zrange<string[]>("market:history:global", offset, offset),
   ]);
 
   COMPANIES.forEach((c, i) => {

@@ -45,6 +45,7 @@ export function CompanyDetail({
               <span className={`font-mono ${changeColor(company.change)}`}>
                 {formatChange(company.change, company.changePercent)}
               </span>
+              <span className="text-xs text-muted-foreground">5-tick (~5m)</span>
             </div>
             <h2 className="text-lg text-foreground mt-1">
               <HoverableContent
@@ -61,7 +62,7 @@ export function CompanyDetail({
             <div className="text-xs text-muted-foreground mb-2">
               Price history (last {prices.length} ticks, ~1 tick/min)
             </div>
-            <Sparkline data={prices} width={500} height={100} showLabels />
+            <Sparkline data={prices} width={500} height={120} showLabels />
           </div>
         )}
 

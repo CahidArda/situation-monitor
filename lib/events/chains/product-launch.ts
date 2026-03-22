@@ -202,6 +202,8 @@ registerEvent({
       { text: meta.product, type: "commodity" },
     ];
 
+    const impactPercent = await ctx.run("calc-impact", () => 1 + Math.random() * 2); // 1-3%
+
     if (meta.isHit) {
       await Promise.all([
         ctx.run("hit-news", async () => {
@@ -233,14 +235,12 @@ registerEvent({
         }),
       ]);
 
-      // Bump sector index by 1-2%
       await ctx.run("market-impact", async () => {
         const company = COMPANIES.find((c) => c.name === meta.companyName);
         if (!company || company.sectors.length === 0) return;
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
-        const bump = 1 + Math.random(); // 1-2%
-        await market.updateSectorIndex(sectorId, currentIndex * (1 + bump / 100));
+        await market.updateSectorIndex(sectorId, currentIndex * (1 + impactPercent / 100));
       });
     } else {
       await Promise.all([
@@ -273,14 +273,12 @@ registerEvent({
         }),
       ]);
 
-      // Dip sector index by 1-2%
       await ctx.run("market-impact", async () => {
         const company = COMPANIES.find((c) => c.name === meta.companyName);
         if (!company || company.sectors.length === 0) return;
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
-        const dip = 1 + Math.random(); // 1-2%
-        await market.updateSectorIndex(sectorId, currentIndex * (1 - dip / 100));
+        await market.updateSectorIndex(sectorId, currentIndex * (1 - impactPercent / 100));
       });
     }
 

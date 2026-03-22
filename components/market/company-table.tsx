@@ -1,18 +1,23 @@
 "use client";
 
+import { useMemo } from "react";
 import type { CompanyWithPrice } from "@/lib/interfaces/market";
 import { useMarketStore } from "@/stores/market";
-import { usePriceHistory } from "@/hooks/use-market";
+import { useBatchPriceHistory } from "@/hooks/use-market";
 import { Sparkline } from "./sparkline";
 import { formatPrice, formatChange, changeColor } from "./format";
 import { HoverableContent } from "@/components/hoverable-content";
 
 const GRID = "grid grid-cols-[60px_1fr_80px_80px_100px_70px] items-center";
 
-function CompanyRow({ company }: { company: CompanyWithPrice }) {
+function CompanyRow({
+  company,
+  prices,
+}: {
+  company: CompanyWithPrice;
+  prices: number[];
+}) {
   const selectCompany = useMarketStore((s) => s.selectCompany);
-  const { data: history } = usePriceHistory("company", company.id, 30);
-  const prices = history?.map((h) => h.price) ?? [];
   const sectorNames = company.sectors.map((s) => s.sectorId).join(", ");
 
   return (
@@ -48,6 +53,12 @@ function CompanyRow({ company }: { company: CompanyWithPrice }) {
 }
 
 export function CompanyTable({ companies }: { companies: CompanyWithPrice[] }) {
+  const queries = useMemo(
+    () => companies.map((c) => ({ type: "company", id: c.id })),
+    [companies],
+  );
+  const { data: batchHistory } = useBatchPriceHistory(queries, 30);
+
   if (companies.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-8">
@@ -63,12 +74,19 @@ export function CompanyTable({ companies }: { companies: CompanyWithPrice[] }) {
         <span>Company</span>
         <span>Sector</span>
         <span className="text-right">Price</span>
-        <span className="text-right">Change</span>
+        <span className="text-right">5-tick</span>
         <span className="text-right">Chart</span>
       </div>
-      {companies.map((c) => (
-        <CompanyRow key={c.id} company={c} />
-      ))}
+      {companies.map((c) => {
+        const history = batchHistory?.[`company:${c.id}`] ?? [];
+        return (
+          <CompanyRow
+            key={c.id}
+            company={c}
+            prices={history.map((h) => h.price)}
+          />
+        );
+      })}
     </div>
   );
 }

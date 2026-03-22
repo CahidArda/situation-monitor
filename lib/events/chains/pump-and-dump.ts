@@ -168,6 +168,9 @@ registerEvent({
       { text: meta.companyName, type: "company" },
     ];
 
+    // Compute drop percent once, use in news text AND market impact
+    const dropPercent = await ctx.run("calc-drop", () => Math.floor(Math.random() * 15 + 5));
+
     await Promise.all([
       ctx.run("crash-news", async () => {
         const newsPersonas = getPersonasByType("news");
@@ -176,7 +179,7 @@ registerEvent({
         const article = generateNewsArticle("regulatory-investigation", {
           company: meta.companyName,
           ticker: meta.ticker,
-          percent: String(Math.floor(Math.random() * 15 + 5)),
+          percent: String(dropPercent),
           detail: 'Regulators have announced they are investigating "coordinated activity" on social media that appeared to drive the initial price increase.',
         });
         await news.write({
@@ -231,14 +234,13 @@ registerEvent({
       }),
     ]);
 
-    // Decrease the company's primary sector index by 1-3%
+    // Apply the same drop to the sector index
     await ctx.run("market-impact", async () => {
       const company = COMPANIES.find((c) => c.name === meta.companyName);
       if (!company || company.sectors.length === 0) return;
       const sectorId = company.sectors[0].sectorId;
       const currentIndex = await getSectorIndex(sectorId);
-      const drop = 1 + Math.random() * 2; // 1-3%
-      await market.updateSectorIndex(sectorId, currentIndex * (1 - drop / 100));
+      await market.updateSectorIndex(sectorId, currentIndex * (1 - dropPercent / 100));
     });
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));

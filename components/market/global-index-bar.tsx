@@ -29,7 +29,7 @@ export function GlobalIndexBar({
           <span className={`text-sm font-mono ${changeColor(change)}`}>
             {formatChange(change, changePercent)}
           </span>
-          <span className="text-[10px] text-muted-foreground">vs prev tick</span>
+          <span className="text-[10px] text-muted-foreground">5-tick (~5m)</span>
         </div>
       </div>
       {prices.length > 1 && <Sparkline data={prices} width={100} height={24} />}

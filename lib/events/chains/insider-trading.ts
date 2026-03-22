@@ -197,6 +197,8 @@ registerEvent({
     ];
 
     if (meta.willBeCorrect) {
+      const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 12 + 3));
+
       await Promise.all([
         ctx.run("correct-tweet", async () => {
           const content = generateTweetContent("insider-correct", insider.type, {
@@ -251,7 +253,7 @@ registerEvent({
             company: meta.companyName,
             ticker: meta.ticker,
             direction: meta.prediction,
-            percent: String(Math.floor(Math.random() * 12 + 3)),
+            percent: String(movePercent),
           });
           await news.write({
             ...article,
@@ -260,13 +262,14 @@ registerEvent({
         }),
       ]);
 
-      // Boost the company's primary sector index by 2-5%
+      // Apply the same move to the sector index
       await ctx.run("market-impact", async () => {
         const company = COMPANIES.find((c) => c.id === meta.companyId);
         if (!company || company.sectors.length === 0) return;
         const sectorId = company.sectors[0].sectorId;
         const currentIndex = await getSectorIndex(sectorId);
-        await market.updateSectorIndex(sectorId, currentIndex * 1.03);
+        const factor = meta.prediction === "up" ? (1 + movePercent / 100) : (1 - movePercent / 100);
+        await market.updateSectorIndex(sectorId, currentIndex * factor);
       });
     } else {
       await Promise.all([
