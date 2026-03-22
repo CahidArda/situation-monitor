@@ -25,6 +25,7 @@ export const { POST } = serve(async (ctx) => {
     if (!seed) return;
 
     const result = await seed.handler(ctx, {});
+    await waitAllIndexes(ctx, "seed");
     await executeFollowUps(ctx, result.followUpEvents);
   }
 
@@ -33,17 +34,9 @@ export const { POST } = serve(async (ctx) => {
     if (!event) return;
 
     const result = await event.handler(ctx, trigger.metadata);
+    await waitAllIndexes(ctx, trigger.eventName);
     await executeFollowUps(ctx, result.followUpEvents);
   }
-
-  // Wait for all search indexes to finish processing new documents
-  await ctx.run("wait-indexing", async () => {
-    await Promise.all([
-      getTweetIndex().waitIndexing(),
-      getNewsIndex().waitIndexing(),
-      getDMIndex().waitIndexing(),
-    ]);
-  });
 });
 
 async function executeFollowUps(
@@ -67,6 +60,8 @@ async function executeFollowUps(
       }),
     );
 
+    await waitAllIndexes(ctx, "immediate-followups");
+
     const nextEvents = results.flatMap((r) => r.followUpEvents);
     await executeFollowUps(ctx, nextEvents);
   }
@@ -77,6 +72,17 @@ async function executeFollowUps(
     const def = getEvent(event.eventName);
     if (!def) continue;
     const result = await def.handler(ctx, event.metadata);
+    await waitAllIndexes(ctx, event.eventName);
     await executeFollowUps(ctx, result.followUpEvents);
   }
+}
+
+async function waitAllIndexes(ctx: WorkflowContext, label: string) {
+  await ctx.run(`wait-indexing-${label}`, () =>
+    Promise.all([
+      getTweetIndex().waitIndexing(),
+      getNewsIndex().waitIndexing(),
+      getDMIndex().waitIndexing(),
+    ]),
+  );
 }
