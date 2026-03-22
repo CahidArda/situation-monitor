@@ -130,6 +130,11 @@ registerEvent({
           fromPersonaId: insiderId,
           content: `The ${meta.country1}/${meta.country2} thing is going to hit ${meta.affectedSector} hard. Watch closely.`,
           type: "tip",
+          entities: [
+            { text: meta.country1, type: "sector" },
+            { text: meta.country2, type: "sector" },
+            { text: meta.affectedSector, type: "sector" },
+          ],
           metadata: { eventChainId: meta.chainId },
         });
       }),
@@ -289,6 +294,11 @@ registerEvent({
             fromPersonaId: insiderId,
             content: `This ${meta.country1}/${meta.country2} thing isn't going away. Stay out of ${meta.affectedSector} for now.`,
             type: "tip",
+            entities: [
+              { text: meta.country1, type: "sector" },
+              { text: meta.country2, type: "sector" },
+              { text: meta.affectedSector, type: "sector" },
+            ],
             metadata: { eventChainId: meta.chainId },
           });
         }),

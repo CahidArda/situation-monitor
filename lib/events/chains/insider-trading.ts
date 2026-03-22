@@ -218,7 +218,12 @@ registerEvent({
           });
           await dms.send({
             fromPersonaId: meta.insiderPersonaId, content: brag,
-            type: "brag", metadata: { eventChainId: meta.chainId },
+            type: "brag",
+            entities: [
+              { text: meta.companyName, type: "company" },
+              { text: meta.ticker, type: "ticker" },
+            ],
+            metadata: { eventChainId: meta.chainId },
           });
         }),
         ctx.run("reaction", async () => {
@@ -275,7 +280,12 @@ registerEvent({
           });
           await dms.send({
             fromPersonaId: meta.insiderPersonaId, content: panic,
-            type: "panic", metadata: { eventChainId: meta.chainId },
+            type: "panic",
+            entities: [
+              { text: meta.companyName, type: "company" },
+              { text: meta.ticker, type: "ticker" },
+            ],
+            metadata: { eventChainId: meta.chainId },
           });
         }),
         ctx.run("mock-tweet", async () => {

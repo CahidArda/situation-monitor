@@ -67,6 +67,10 @@ registerEvent({
         fromPersonaId: meta.manipulatorId,
         content,
         type: "tip",
+        entities: [
+          { text: meta.companyName, type: "company" },
+          { text: meta.ticker, type: "ticker" },
+        ],
         metadata: { eventChainId: meta.chainId, relatedCompany: meta.companyName },
       });
     });
@@ -134,6 +138,10 @@ registerEvent({
           fromPersonaId: meta.manipulatorId,
           content,
           type: "followup",
+          entities: [
+            { text: meta.companyName, type: "company" },
+            { text: meta.ticker, type: "ticker" },
+          ],
           metadata: { eventChainId: meta.chainId },
         });
       }),
@@ -200,6 +208,10 @@ registerEvent({
           fromPersonaId: meta.manipulatorId,
           content,
           type: "panic",
+          entities: [
+            { text: meta.companyName, type: "company" },
+            { text: meta.ticker, type: "ticker" },
+          ],
           metadata: { eventChainId: meta.chainId },
         });
       }),
