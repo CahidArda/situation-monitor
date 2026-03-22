@@ -11,8 +11,8 @@ registerSeedEvent({
   name: "noise.random-tweet",
   description: "A persona tweets something unrelated to any chain",
   schema: NoiseSchema,
-  weight: 10,
-  cooldownSeconds: 15,
+  weight: 4,
+  cooldownSeconds: 30,
   handler: async (ctx) => {
     await ctx.run("noise-tweet", async () => {
       const personaTypes = ["shitposter", "analyst", "regular", "insider"] as const;
@@ -51,7 +51,7 @@ registerSeedEvent({
   description: "The time-traveling Venetian merchant tweets",
   schema: NoiseSchema,
   weight: 1, // rare
-  cooldownSeconds: 300, // 5 minute cooldown
+  cooldownSeconds: 120, // 2 minute cooldown
   handler: async (ctx) => {
     await ctx.run("time-traveler-tweet", async () => {
       const persona = getPersona("time-traveler");

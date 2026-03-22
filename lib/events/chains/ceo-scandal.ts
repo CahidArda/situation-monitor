@@ -38,7 +38,7 @@ registerSeedEvent({
   description: "Start a CEO scandal chain",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 180,
+  cooldownSeconds: 60,
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {

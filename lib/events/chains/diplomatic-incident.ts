@@ -36,7 +36,7 @@ registerSeedEvent({
   description: "Start a diplomatic incident chain",
   schema: z.object({}),
   weight: 3,
-  cooldownSeconds: 200,
+  cooldownSeconds: 75,
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {

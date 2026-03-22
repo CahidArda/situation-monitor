@@ -39,7 +39,7 @@ registerSeedEvent({
   description: "Start an insider trading chain",
   schema: z.object({}),
   weight: 5,
-  cooldownSeconds: 120,
+  cooldownSeconds: 45,
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {

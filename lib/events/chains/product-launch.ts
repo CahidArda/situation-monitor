@@ -28,7 +28,7 @@ registerSeedEvent({
   description: "Start a product launch chain",
   schema: z.object({}),
   weight: 4,
-  cooldownSeconds: 150,
+  cooldownSeconds: 50,
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
     const meta = await ctx.run("setup-meta", async () => {
