@@ -87,7 +87,7 @@ function ConversationPopover({ personaId }: { personaId: string }) {
       </PopoverTrigger>
       <PopoverContent
         side="top"
-        align="end"
+        align="start"
         sideOffset={0}
         className="w-96 p-0 flex flex-col max-h-128"
       >
@@ -147,7 +147,7 @@ function DMListPopover() {
       </PopoverTrigger>
       <PopoverContent
         side="top"
-        align="end"
+        align="start"
         sideOffset={0}
         className="w-96 p-0 max-h-128 overflow-y-auto"
       >
@@ -201,11 +201,11 @@ export function DMBar() {
   const openConversations = useDMStore((s) => s.openConversations);
 
   return (
-    <div className="fixed bottom-0 right-[10%] flex items-end gap-1 z-50">
+    <div className="fixed bottom-0 left-[10%] flex items-end gap-1 z-50">
+      <DMListPopover />
       {openConversations.map((personaId) => (
         <ConversationPopover key={personaId} personaId={personaId} />
       ))}
-      <DMListPopover />
     </div>
   );
 }
