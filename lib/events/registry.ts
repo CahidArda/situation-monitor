@@ -1,44 +1,42 @@
-import type { z } from "zod";
 import { redis } from "@/lib/redis";
 import { ticksToSeconds } from "@/lib/constants";
-import type { EventDefinition, SeedEventDefinition } from "@/lib/interfaces/events";
+import type { SeedEventDefinition } from "@/lib/interfaces/events";
 
 // ---------------------------------------------------------------------------
-// Registry
+// All seed events — imported directly, no registration needed
 // ---------------------------------------------------------------------------
 
-const eventRegistry = new Map<string, EventDefinition<z.ZodType>>();
-const seedEvents: SeedEventDefinition<z.ZodType>[] = [];
+import { noiseTweet, timeTraveler } from "./chains/noise";
+import { insiderTrading } from "./chains/insider-trading";
+import { ceoScandal } from "./chains/ceo-scandal";
+import { diplomaticIncident } from "./chains/diplomatic-incident";
+import { pumpAndDump } from "./chains/pump-and-dump";
+import { productLaunch } from "./chains/product-launch";
+import { marketBoom } from "./chains/market-boom";
 
-export function registerEvent<T extends z.ZodType>(def: EventDefinition<T>) {
-  eventRegistry.set(def.name, def as EventDefinition<z.ZodType>);
-}
-
-export function registerSeedEvent<T extends z.ZodType>(
-  def: SeedEventDefinition<T>,
-) {
-  eventRegistry.set(def.name, def as EventDefinition<z.ZodType>);
-  seedEvents.push(def as SeedEventDefinition<z.ZodType>);
-}
-
-export function getEvent(name: string) {
-  return eventRegistry.get(name);
-}
+const ALL_SEEDS: SeedEventDefinition[] = [
+  noiseTweet,
+  timeTraveler,
+  insiderTrading,
+  ceoScandal,
+  diplomaticIncident,
+  pumpAndDump,
+  productLaunch,
+  marketBoom,
+];
 
 // ---------------------------------------------------------------------------
 // Seed selection — weighted random with cooldown and condition checks
 // ---------------------------------------------------------------------------
 
-export async function selectSeedEvent(): Promise<SeedEventDefinition<z.ZodType> | null> {
-  const eligible: SeedEventDefinition<z.ZodType>[] = [];
+export async function selectSeedEvent(): Promise<SeedEventDefinition | null> {
+  const eligible: SeedEventDefinition[] = [];
 
-  for (const seed of seedEvents) {
-    // Check cooldown
+  for (const seed of ALL_SEEDS) {
     const cooldownKey = `sim:seed:cooldown:${seed.name}`;
     const lastFired = await redis.get(cooldownKey);
-    if (lastFired) continue; // still in cooldown
+    if (lastFired) continue;
 
-    // Check conditions
     if (seed.requiredConditions) {
       const ok = await seed.requiredConditions();
       if (!ok) continue;
@@ -49,14 +47,12 @@ export async function selectSeedEvent(): Promise<SeedEventDefinition<z.ZodType> 
 
   if (eligible.length === 0) return null;
 
-  // Weighted random selection
   const totalWeight = eligible.reduce((sum, s) => sum + s.weight, 0);
   let roll = Math.random() * totalWeight;
 
   for (const seed of eligible) {
     roll -= seed.weight;
     if (roll <= 0) {
-      // Set cooldown TTL
       await redis.set(
         `sim:seed:cooldown:${seed.name}`,
         Date.now(),
@@ -69,16 +65,6 @@ export async function selectSeedEvent(): Promise<SeedEventDefinition<z.ZodType> 
   return eligible[0];
 }
 
-// ---------------------------------------------------------------------------
-// Ensure all chain modules are imported (side-effect registration)
-// ---------------------------------------------------------------------------
-
-export async function loadAllChains() {
-  await import("./chains/noise");
-  await import("./chains/insider-trading");
-  await import("./chains/ceo-scandal");
-  await import("./chains/diplomatic-incident");
-  await import("./chains/pump-and-dump");
-  await import("./chains/product-launch");
-  await import("./chains/market-boom");
+export function getSeedByName(name: string): SeedEventDefinition | undefined {
+  return ALL_SEEDS.find((s) => s.name === name);
 }

@@ -46,15 +46,15 @@ export function Sparkline({
   const isUp = data[data.length - 1] >= data[data.length - 1 - lookback];
 
   // X-axis time labels (each data point = 1 tick)
-  const totalMinutes = Math.round((data.length * TICK_DURATION_SECONDS) / 60);
   const xLabels: { x: number; text: string }[] = [];
   if (showLabels && data.length > 4) {
     const labelCount = Math.min(5, data.length);
     for (let i = 0; i < labelCount; i++) {
       const idx = Math.floor((i / (labelCount - 1)) * (data.length - 1));
       const x = yLabelWidth + (idx / (data.length - 1)) * chartWidth;
-      const minsAgo = totalMinutes - idx;
-      const text = minsAgo <= 1 ? "now" : `${minsAgo}m`;
+      const ticksAgo = data.length - 1 - idx;
+      const secsAgo = ticksAgo * TICK_DURATION_SECONDS;
+      const text = secsAgo < 10 ? "now" : secsAgo < 60 ? `${secsAgo}s` : `${Math.round(secsAgo / 60)}m`;
       xLabels.push({ x, text });
     }
   }

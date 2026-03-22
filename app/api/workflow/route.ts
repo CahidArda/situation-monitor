@@ -1,90 +1,31 @@
 import { serve } from "@upstash/workflow/nextjs";
-import { loadAllChains, selectSeedEvent, getEvent } from "@/lib/events/registry";
+import { selectSeedEvent, getSeedByName } from "@/lib/events/registry";
 import { incrementTick, setLastEventTime } from "@/lib/events/state";
 import { market } from "@/lib/market/market";
 import { getTweetIndex, getNewsIndex, getDMIndex } from "@/lib/search";
-import type { EventResult } from "@/lib/interfaces/events";
-import type { WorkflowContext } from "@upstash/workflow";
 
 export const { POST } = serve(async (ctx) => {
-  // Ensure all chains are registered
-  await loadAllChains();
+  await ctx.run("increment-tick", () => incrementTick());
+  await ctx.run("set-last-event-time", () => setLastEventTime());
+  await ctx.run("market-tick", () => market.tick());
 
-  const trigger = ctx.requestPayload as { type: "seed" | "event"; eventName?: string; metadata?: unknown };
+  const seedName = await ctx.run("select-seed", async () => {
+    const selected = await selectSeedEvent();
+    return selected?.name ?? null;
+  });
 
-  if (trigger.type === "seed") {
-    await ctx.run("increment-tick", () => incrementTick());
-    await ctx.run("set-last-event-time", () => setLastEventTime());
-    await ctx.run("market-tick", () => market.tick());
+  if (!seedName) return;
 
-    const seedName = await ctx.run("select-seed", async () => {
-      const selected = await selectSeedEvent();
-      return selected?.name ?? null;
-    });
-    if (!seedName) return; // no eligible seed
+  const seed = getSeedByName(seedName);
+  if (!seed) return;
 
-    const seed = getEvent(seedName);
-    if (!seed) return;
+  await seed.handler(ctx);
 
-    const result = await seed.handler(ctx, {});
-    await waitAllIndexes(ctx, "seed");
-    await executeFollowUps(ctx, result.followUpEvents);
-  }
-
-  if (trigger.type === "event" && trigger.eventName) {
-    const event = getEvent(trigger.eventName);
-    if (!event) return;
-
-    const result = await event.handler(ctx, trigger.metadata);
-    await waitAllIndexes(ctx, trigger.eventName);
-    await executeFollowUps(ctx, result.followUpEvents);
-  }
-});
-
-async function executeFollowUps(
-  ctx: WorkflowContext,
-  events: EventResult["followUpEvents"],
-) {
-  if (events.length === 0) return;
-
-  const immediate = events.filter((e) => !e.delaySeconds);
-  const delayed = events.filter((e) => e.delaySeconds);
-
-  // Execute immediate follow-ups in parallel
-  // Handlers are called directly (not inside ctx.run) because they
-  // contain their own ctx.run steps internally for idempotency.
-  if (immediate.length > 0) {
-    const results = await Promise.all(
-      immediate.map(async (event) => {
-        const def = getEvent(event.eventName);
-        if (!def) return { followUpEvents: [] } as EventResult;
-        return def.handler(ctx, event.metadata);
-      }),
-    );
-
-    await waitAllIndexes(ctx, "immediate-followups");
-
-    const nextEvents = results.flatMap((r) => r.followUpEvents);
-    await executeFollowUps(ctx, nextEvents);
-  }
-
-  // Schedule delayed events sequentially
-  for (const event of delayed) {
-    await ctx.sleep(`delay-${event.eventName}`, event.delaySeconds!);
-    const def = getEvent(event.eventName);
-    if (!def) continue;
-    const result = await def.handler(ctx, event.metadata);
-    await waitAllIndexes(ctx, event.eventName);
-    await executeFollowUps(ctx, result.followUpEvents);
-  }
-}
-
-async function waitAllIndexes(ctx: WorkflowContext, label: string) {
-  await ctx.run(`wait-indexing-${label}`, () =>
+  await ctx.run("wait-indexing", () =>
     Promise.all([
       getTweetIndex().waitIndexing(),
       getNewsIndex().waitIndexing(),
       getDMIndex().waitIndexing(),
     ]),
   );
-}
+});

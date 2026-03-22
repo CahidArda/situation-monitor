@@ -1,17 +1,15 @@
-import { z } from "zod";
 import { nanoid } from "nanoid";
-import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
+import type { SeedEventDefinition } from "@/lib/interfaces/events";
+import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
 import { tweets } from "@/lib/tweets";
 import { news } from "@/lib/news";
 import { dms } from "@/lib/dms";
 import { SECTORS } from "@/lib/market/sectors";
-import { COMPANIES } from "@/lib/market/companies";
-import { market } from "@/lib/market/market";
+import { applyMarketImpact } from "@/lib/market/impact";
 import { DM_PERSONAS, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
-import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
+import { ticksToSeconds, COOLDOWN_TICKS } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 type SectorId = typeof SECTORS[number]["id"];
@@ -46,26 +44,31 @@ const BOOM_REASONS: BoomReason[] = [
   { headline: "World's First Holographic Theme Park Opens", detail: "A revolutionary holographic theme park opened to 10 million pre-orders on day one, crashing the ticketing system", sector: "entertainment" },
 ];
 
-const ChainSchema = z.object({
-  chainId: z.string(),
-  reason: z.string(),
-  detail: z.string(),
-  sectorId: z.string(),
-  sectorName: z.string(),
-  boomPercent: z.number(),
-});
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-type ChainMeta = z.infer<typeof ChainSchema>;
+interface ChainMeta {
+  chainId: string;
+  reason: string;
+  detail: string;
+  sectorId: string;
+  sectorName: string;
+  boomPercent: number;
+}
 
-// 1. Seed → breaking news
-registerSeedEvent({
+// ---------------------------------------------------------------------------
+// Chain
+// ---------------------------------------------------------------------------
+
+export const marketBoom: SeedEventDefinition = {
   name: "market-boom.setup",
   description: "Start a market boom event",
-  schema: z.object({}),
   weight: 3,
   cooldownTicks: COOLDOWN_TICKS["market-boom"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
+    // ── Step 1: Setup metadata ──────────────────────────────────────────
     const meta = await ctx.run("setup-meta", async () => {
       const boom = pickRandom(BOOM_REASONS);
       const sector = SECTORS.find((s) => s.id === boom.sector) ?? pickRandom(SECTORS);
@@ -80,32 +83,14 @@ registerSeedEvent({
         boomPercent: 10 + Math.floor(Math.random() * 15), // 10-25%
       } satisfies ChainMeta;
     });
-    return {
-      followUpEvents: [
-        { eventName: "market-boom.breaking-news", metadata: meta },
-      ],
-    };
-  },
-});
 
-// 2. Breaking news → euphoria wave (15-25s)
-registerEvent({
-  name: "market-boom.breaking-news",
-  description: "Breaking news about something incredible",
-  schema: ChainSchema,
-  handler: async (ctx, meta) => {
+    // ── Step 2: Market impact + breaking news ───────────────────────────
     const entities: ContentEntity[] = [
       { text: meta.sectorName, type: "sector" },
     ];
 
-    // Apply the boom to the sector first — so news/tweets reference an already-moved market
-    await ctx.run("market-impact", async () => {
-      const currentIndex = await getSectorIndex(meta.sectorId);
-      await market.updateSectorIndex(meta.sectorId, currentIndex * (1 + meta.boomPercent / 100));
-      await market.updateSectorStatus(meta.sectorId, "bull");
-    });
-
-    await ctx.sleep("impact-settle", ticksToSeconds(1));
+    // Apply the boom to the sector (includes 1-tick sleep)
+    await applyMarketImpact(ctx, meta.sectorId, meta.boomPercent, "bull");
 
     // Write news first for newsLink
     const headline = `${meta.reason}: ${meta.sectorName} Sector to Benefit Most`;
@@ -125,6 +110,7 @@ registerEvent({
       });
     });
 
+    // News tweet
     await ctx.run("news-tweet", async () => {
       const newsPersonas = getPersonasByType("news");
       if (newsPersonas.length === 0) return;
@@ -140,92 +126,77 @@ registerEvent({
       });
     });
 
-    const delayTicks = await ctx.run("delay", () => 2 + Math.floor(Math.random() * 2));
-    return {
-      followUpEvents: [
-        { eventName: "market-boom.euphoria", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
-      ],
-    };
-  },
-});
+    const delay1 = await ctx.run("delay-1", () => 2 + Math.floor(Math.random() * 2));
+    await ctx.sleep("after-breaking-news", ticksToSeconds(delay1));
 
-// 3. Euphoria — everyone celebrates, chain ends
-registerEvent({
-  name: "market-boom.euphoria",
-  description: "Everyone celebrates the boom",
-  schema: ChainSchema,
-  handler: async (ctx, meta) => {
-    const entities: ContentEntity[] = [
-      { text: meta.sectorName, type: "sector" },
-    ];
+    // ── Step 3: Euphoria wave ───────────────────────────────────────────
+    await ctx.run("shitposter-tweet", async () => {
+      const shitposters = getPersonasByType("shitposter");
+      if (shitposters.length === 0) return;
+      const persona = pickRandom(shitposters);
+      const reactions = [
+        `${meta.sectorName} UP ${meta.boomPercent}%?!? I'M LITERALLY CRYING. MY PORTFOLIO IS SAVED. 😭🚀🚀`,
+        `EVERYONE WHO DOUBTED ${meta.sectorName} CAN APOLOGIZE NOW. I'll be on my yacht. 🛥️`,
+        `${meta.reason}?? WE LIVE IN THE BEST TIMELINE. ${meta.sectorName} TO THE MOON 🚀🚀🚀`,
+      ];
+      await tweets.write({
+        authorId: persona.id,
+        authorHandle: persona.handle,
+        authorDisplayName: persona.displayName,
+        content: pickRandom(reactions),
+        eventChainId: meta.chainId,
+        entities,
+      });
+    });
 
-    await Promise.all([
-      ctx.run("shitposter-tweet", async () => {
-        const shitposters = getPersonasByType("shitposter");
-        if (shitposters.length === 0) return;
-        const persona = pickRandom(shitposters);
-        const reactions = [
-          `${meta.sectorName} UP ${meta.boomPercent}%?!? I'M LITERALLY CRYING. MY PORTFOLIO IS SAVED. 😭🚀🚀`,
-          `EVERYONE WHO DOUBTED ${meta.sectorName} CAN APOLOGIZE NOW. I'll be on my yacht. 🛥️`,
-          `${meta.reason}?? WE LIVE IN THE BEST TIMELINE. ${meta.sectorName} TO THE MOON 🚀🚀🚀`,
-        ];
-        await tweets.write({
-          authorId: persona.id,
-          authorHandle: persona.handle,
-          authorDisplayName: persona.displayName,
-          content: pickRandom(reactions),
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
-      ctx.run("analyst-tweet", async () => {
-        const analysts = getPersonasByType("analyst");
-        if (analysts.length === 0) return;
-        const persona = pickRandom(analysts);
-        const reactions = [
-          `${meta.sectorName} +${meta.boomPercent}% is just the beginning. Raising all price targets. This is a paradigm shift.`,
-          `I've been bullish on ${meta.sectorName} for months. Today validates the thesis. Thread incoming.`,
-        ];
-        await tweets.write({
-          authorId: persona.id,
-          authorHandle: persona.handle,
-          authorDisplayName: persona.displayName,
-          content: pickRandom(reactions),
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
-      ctx.run("insider-dm", async () => {
-        const insiderIds = Object.keys(DM_PERSONAS);
-        const insiderId = pickRandom(insiderIds);
-        await dms.send({
-          fromPersonaId: insiderId,
-          content: `I TOLD you to watch ${meta.sectorName}. ${meta.boomPercent}% in one day. You're welcome. 😎`,
-          type: "brag",
-          entities,
-          metadata: { eventChainId: meta.chainId },
-        });
-      }),
-      ctx.run("regular-tweet", async () => {
-        const regulars = getPersonasByType("regular");
-        if (regulars.length === 0) return;
-        const persona = pickRandom(regulars);
-        const reactions = [
-          `wait ${meta.sectorName} is up ${meta.boomPercent}%?? I don't even own any ${meta.sectorName} stocks 😭`,
-          `my coworker just made a year's salary in one day from ${meta.sectorName}. I need to start paying attention.`,
-        ];
-        await tweets.write({
-          authorId: persona.id,
-          authorHandle: persona.handle,
-          authorDisplayName: persona.displayName,
-          content: pickRandom(reactions),
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
-    ]);
+    await ctx.run("analyst-tweet", async () => {
+      const analysts = getPersonasByType("analyst");
+      if (analysts.length === 0) return;
+      const persona = pickRandom(analysts);
+      const reactions = [
+        `${meta.sectorName} +${meta.boomPercent}% is just the beginning. Raising all price targets. This is a paradigm shift.`,
+        `I've been bullish on ${meta.sectorName} for months. Today validates the thesis. Thread incoming.`,
+      ];
+      await tweets.write({
+        authorId: persona.id,
+        authorHandle: persona.handle,
+        authorDisplayName: persona.displayName,
+        content: pickRandom(reactions),
+        eventChainId: meta.chainId,
+        entities,
+      });
+    });
+
+    await ctx.run("insider-dm", async () => {
+      const insiderIds = Object.keys(DM_PERSONAS);
+      const insiderId = pickRandom(insiderIds);
+      await dms.send({
+        fromPersonaId: insiderId,
+        content: `I TOLD you to watch ${meta.sectorName}. ${meta.boomPercent}% in one day. You're welcome. 😎`,
+        type: "brag",
+        entities,
+        metadata: { eventChainId: meta.chainId },
+      });
+    });
+
+    await ctx.run("regular-tweet", async () => {
+      const regulars = getPersonasByType("regular");
+      if (regulars.length === 0) return;
+      const persona = pickRandom(regulars);
+      const reactions = [
+        `wait ${meta.sectorName} is up ${meta.boomPercent}%?? I don't even own any ${meta.sectorName} stocks 😭`,
+        `my coworker just made a year's salary in one day from ${meta.sectorName}. I need to start paying attention.`,
+      ];
+      await tweets.write({
+        authorId: persona.id,
+        authorHandle: persona.handle,
+        authorDisplayName: persona.displayName,
+        content: pickRandom(reactions),
+        eventChainId: meta.chainId,
+        entities,
+      });
+    });
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));
-    return { followUpEvents: [] };
   },
-});
+};

@@ -1,17 +1,13 @@
-import { z } from "zod";
-import { registerSeedEvent } from "../registry";
+import type { SeedEventDefinition } from "@/lib/interfaces/events";
 import { tweets } from "@/lib/tweets";
 import { PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "@/lib/events/templates/tweets";
 import { COOLDOWN_TICKS } from "@/lib/constants";
 
-const NoiseSchema = z.object({});
-
-registerSeedEvent({
+export const noiseTweet: SeedEventDefinition = {
   name: "noise.random-tweet",
   description: "A persona tweets something unrelated to any chain",
-  schema: NoiseSchema,
   weight: 4,
   cooldownTicks: COOLDOWN_TICKS["noise"],
   handler: async (ctx) => {
@@ -30,10 +26,8 @@ registerSeedEvent({
         content,
       });
     });
-
-    return { followUpEvents: [] };
   },
-});
+};
 
 // Easter egg: time-traveling trader from 1492
 const TIME_TRAVELER_TWEETS = [
@@ -47,10 +41,9 @@ const TIME_TRAVELER_TWEETS = [
   "A merchant in my time who lost this much gold would have been banished to sea. You call it 'Tuesday.'",
 ];
 
-registerSeedEvent({
+export const timeTraveler: SeedEventDefinition = {
   name: "noise.time-traveler",
   description: "The time-traveling Venetian merchant tweets",
-  schema: NoiseSchema,
   weight: 1, // rare
   cooldownTicks: COOLDOWN_TICKS["time-traveler"],
   handler: async (ctx) => {
@@ -67,7 +60,5 @@ registerSeedEvent({
         content,
       });
     });
-
-    return { followUpEvents: [] };
   },
-});
+};

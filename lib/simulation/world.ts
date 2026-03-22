@@ -209,7 +209,7 @@ const DIPLOMATIC_SUBJECTS = [
   "a goat island",
   "a potato export",
   "a bridge naming",
-  "a royal wedding invite",
+  "a royal wedding invitation",
   "a submarine cable",
 ];
 

@@ -1,48 +1,200 @@
-import { z } from "zod";
 import { nanoid } from "nanoid";
-import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
+import type { SeedEventDefinition } from "@/lib/interfaces/events";
+import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
 import { tweets } from "@/lib/tweets";
 import { dms } from "@/lib/dms";
 import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
-import { market } from "@/lib/market/market";
+import { applyMarketImpact, getCompanySectorId } from "@/lib/market/impact";
 import { DM_PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
 import { generateDMContent } from "../templates/dms";
 import { generateNewsArticle } from "../templates/news";
-import { COOLDOWN_TICKS, ticksToSeconds } from "@/lib/constants";
+import { ticksToSeconds, COOLDOWN_TICKS } from "@/lib/constants";
 import type { ContentEntity } from "@/lib/interfaces/types";
+import type { WorkflowContext } from "@upstash/workflow";
 
 // ---------------------------------------------------------------------------
-// Shared schema for the chain metadata passed between steps
+// Types
 // ---------------------------------------------------------------------------
 
-const ChainSchema = z.object({
-  chainId: z.string(),
-  companyId: z.string(),
-  companyName: z.string(),
-  ticker: z.string(),
-  insiderPersonaId: z.string(),
-  prediction: z.enum(["up", "down"]),
-  willBeCorrect: z.boolean(),
-});
-
-type ChainMeta = z.infer<typeof ChainSchema>;
+interface ChainMeta {
+  chainId: string;
+  companyId: string;
+  companyName: string;
+  ticker: string;
+  insiderPersonaId: string;
+  prediction: "up" | "down";
+  willBeCorrect: boolean;
+}
 
 // ---------------------------------------------------------------------------
-// 1. Seed → setup, then chain to rumor DM
+// Branch helpers
 // ---------------------------------------------------------------------------
 
-registerSeedEvent({
+async function onCorrectPrediction(ctx: WorkflowContext, meta: ChainMeta) {
+  const insider = getPersona(meta.insiderPersonaId)!;
+  const insiderHandle = insider.handle.replace("@", "");
+  const entities: ContentEntity[] = [
+    { text: meta.ticker, type: "ticker" },
+    { text: meta.companyName, type: "company" },
+    { text: insiderHandle, type: "persona" },
+    { text: insider.displayName, type: "persona" },
+  ];
+
+  const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 10 + 10)); // 10-20%
+
+  // Market impact
+  const sectorId = getCompanySectorId(meta.companyId);
+  if (sectorId) {
+    const change = meta.prediction === "up" ? movePercent : -movePercent;
+    const status = meta.prediction === "up" ? "bull" as const : "bear" as const;
+    await applyMarketImpact(ctx, sectorId, change, status);
+  }
+
+  // News article
+  await ctx.run("news-article", async () => {
+    const newsPersonas = getPersonasByType("news");
+    if (newsPersonas.length === 0) return;
+    const newsOrg = pickRandom(newsPersonas);
+    const article = generateNewsArticle("insider-activity", {
+      company: meta.companyName,
+      ticker: meta.ticker,
+      direction: meta.prediction,
+      percent: String(movePercent),
+    });
+    await news.write({
+      ...article,
+      source: newsOrg.id, sourceDisplayName: newsOrg.displayName, entities,
+    });
+  });
+
+  // Brag tweet from insider
+  await ctx.run("correct-tweet", async () => {
+    const content = generateTweetContent("insider-correct", insider.type, {
+      ticker: meta.ticker,
+      insiderHandle,
+      direction: meta.prediction,
+    });
+    await tweets.write({
+      authorId: insider.id, authorHandle: insider.handle,
+      authorDisplayName: insider.displayName,
+      content, eventChainId: meta.chainId, entities,
+    });
+  });
+
+  // Brag DM
+  await ctx.run("brag-dm", async () => {
+    const brag = generateDMContent("insider-trading", "brag", {
+      company: meta.companyName, ticker: meta.ticker,
+      prediction: "", direction: meta.prediction, department: "",
+      percent: String(Math.floor(Math.random() * 15 + 3)),
+      amount: `$${Math.floor(Math.random() * 50000 + 5000)}`,
+      sector: "",
+    });
+    await dms.send({
+      fromPersonaId: meta.insiderPersonaId, content: brag,
+      type: "brag",
+      entities: [
+        { text: meta.companyName, type: "company" },
+        { text: meta.ticker, type: "ticker" },
+      ],
+      metadata: { eventChainId: meta.chainId },
+    });
+  });
+
+  // Reaction from a regular
+  await ctx.run("reaction", async () => {
+    const regulars = getPersonasByType("regular");
+    if (regulars.length === 0) return;
+    const reactor = pickRandom(regulars);
+    const reaction = generateTweetContent("insider-correct", "regular", {
+      ticker: meta.ticker,
+      insiderHandle,
+      direction: meta.prediction,
+    });
+    await tweets.write({
+      authorId: reactor.id, authorHandle: reactor.handle,
+      authorDisplayName: reactor.displayName,
+      content: reaction, eventChainId: meta.chainId, entities,
+    });
+  });
+}
+
+async function onIncorrectPrediction(ctx: WorkflowContext, meta: ChainMeta) {
+  const insider = getPersona(meta.insiderPersonaId)!;
+  const insiderHandle = insider.handle.replace("@", "");
+  const entities: ContentEntity[] = [
+    { text: meta.ticker, type: "ticker" },
+    { text: meta.companyName, type: "company" },
+    { text: insiderHandle, type: "persona" },
+    { text: insider.displayName, type: "persona" },
+  ];
+
+  // Wrong tweet from insider
+  await ctx.run("wrong-tweet", async () => {
+    const content = generateTweetContent("insider-wrong", insider.type, {
+      ticker: meta.ticker,
+      insiderHandle,
+      direction: meta.prediction,
+    });
+    await tweets.write({
+      authorId: insider.id, authorHandle: insider.handle,
+      authorDisplayName: insider.displayName,
+      content, eventChainId: meta.chainId, entities,
+    });
+  });
+
+  // Panic DM
+  await ctx.run("panic-dm", async () => {
+    const panic = generateDMContent("insider-trading", "panic", {
+      company: meta.companyName, ticker: meta.ticker,
+      prediction: "", direction: meta.prediction === "up" ? "down" : "up",
+      department: "", percent: String(Math.floor(Math.random() * 10 + 3)),
+      amount: "", sector: "",
+    });
+    await dms.send({
+      fromPersonaId: meta.insiderPersonaId, content: panic,
+      type: "panic",
+      entities: [
+        { text: meta.companyName, type: "company" },
+        { text: meta.ticker, type: "ticker" },
+      ],
+      metadata: { eventChainId: meta.chainId },
+    });
+  });
+
+  // Mock tweet from shitposter
+  await ctx.run("mock-tweet", async () => {
+    const shitposters = getPersonasByType("shitposter");
+    if (shitposters.length === 0) return;
+    const mocker = pickRandom(shitposters);
+    const mock = generateTweetContent("insider-wrong", "shitposter", {
+      ticker: meta.ticker,
+      insiderHandle,
+      direction: meta.prediction,
+    });
+    await tweets.write({
+      authorId: mocker.id, authorHandle: mocker.handle,
+      authorDisplayName: mocker.displayName,
+      content: mock, eventChainId: meta.chainId, entities,
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Chain
+// ---------------------------------------------------------------------------
+
+export const insiderTrading: SeedEventDefinition = {
   name: "insider-trading.setup",
   description: "Start an insider trading chain",
-  schema: z.object({}),
   weight: 5,
   cooldownTicks: COOLDOWN_TICKS["insider-trading"],
   requiredConditions: async () => (await getActiveChainCount()) < 3,
   handler: async (ctx) => {
+    // ── Step 1: Setup metadata ──────────────────────────────────────────
     const meta = await ctx.run("setup-meta", async () => {
       const company = pickRandom(COMPANIES);
       const insiderIds = Object.keys(DM_PERSONAS);
@@ -60,23 +212,7 @@ registerSeedEvent({
       } satisfies ChainMeta;
     });
 
-    return {
-      followUpEvents: [
-        { eventName: "insider-trading.rumor-dm", metadata: meta },
-      ],
-    };
-  },
-});
-
-// ---------------------------------------------------------------------------
-// 2. Rumor DM → chain to speculative tweet (10-20s delay)
-// ---------------------------------------------------------------------------
-
-registerEvent({
-  name: "insider-trading.rumor-dm",
-  description: "Insider DMs a tip, then triggers speculative tweet",
-  schema: ChainSchema,
-  handler: async (ctx, meta) => {
+    // ── Step 2: Rumor DM ────────────────────────────────────────────────
     await ctx.run("send-dm", async () => {
       const content = generateDMContent("insider-trading", "tip", {
         company: meta.companyName,
@@ -104,27 +240,12 @@ registerEvent({
       });
     });
 
-    const delayTicks = await ctx.run("delay", () => 1 + Math.floor(Math.random() * 2));
+    const delay1 = await ctx.run("delay-1", () => 1 + Math.floor(Math.random() * 2));
+    await ctx.sleep("after-rumor", ticksToSeconds(delay1));
 
-    return {
-      followUpEvents: [
-        { eventName: "insider-trading.speculative-tweet", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
-      ],
-    };
-  },
-});
-
-// ---------------------------------------------------------------------------
-// 3. Speculative tweet → chain to outcome (30-60s delay)
-// ---------------------------------------------------------------------------
-
-registerEvent({
-  name: "insider-trading.speculative-tweet",
-  description: "Insider tweets vaguely, others react, then triggers outcome",
-  schema: ChainSchema,
-  handler: async (ctx, meta) => {
+    // ── Step 3: Speculative tweets ──────────────────────────────────────
     const insider = getPersona(meta.insiderPersonaId);
-    const entities: ContentEntity[] = [
+    const specEntities: ContentEntity[] = [
       { text: meta.ticker, type: "ticker" },
       { text: meta.companyName, type: "company" },
       ...(insider ? [
@@ -133,7 +254,6 @@ registerEvent({
       ] : []),
     ];
 
-    // Insider tweets first, then reactions
     await ctx.run("insider-tweet", async () => {
       if (!insider) return;
       const content = generateTweetContent("insider-rumor", insider.type, { ticker: meta.ticker });
@@ -143,189 +263,40 @@ registerEvent({
         authorDisplayName: insider.displayName,
         content,
         eventChainId: meta.chainId,
-        entities,
+        entities: specEntities,
       });
     });
 
-    await Promise.all([
-      ctx.run("reaction-tweet", async () => {
-        const regulars = getPersonasByType("regular");
-        if (regulars.length === 0) return;
-        const reactor = pickRandom(regulars);
-        const reaction = generateTweetContent("insider-rumor", "regular", { ticker: meta.ticker });
-        await tweets.write({
-          authorId: reactor.id,
-          authorHandle: reactor.handle,
-          authorDisplayName: reactor.displayName,
-          content: reaction,
-          eventChainId: meta.chainId,
-          entities,
-        });
-      }),
-    ]);
+    await ctx.run("reaction-tweet", async () => {
+      const regulars = getPersonasByType("regular");
+      if (regulars.length === 0) return;
+      const reactor = pickRandom(regulars);
+      const reaction = generateTweetContent("insider-rumor", "regular", { ticker: meta.ticker });
+      await tweets.write({
+        authorId: reactor.id,
+        authorHandle: reactor.handle,
+        authorDisplayName: reactor.displayName,
+        content: reaction,
+        eventChainId: meta.chainId,
+        entities: specEntities,
+      });
+    });
 
-    const delayTicks = await ctx.run("delay", () => 3 + Math.floor(Math.random() * 4));
+    const delay2 = await ctx.run("delay-2", () => 3 + Math.floor(Math.random() * 4));
+    await ctx.sleep("after-speculation", ticksToSeconds(delay2));
 
-    return {
-      followUpEvents: [
-        { eventName: "insider-trading.outcome", metadata: meta, delaySeconds: ticksToSeconds(delayTicks) },
-      ],
-    };
-  },
-});
-
-// ---------------------------------------------------------------------------
-// 4. Outcome — correct or incorrect, chain ends
-// ---------------------------------------------------------------------------
-
-registerEvent({
-  name: "insider-trading.outcome",
-  description: "The prediction plays out or fails",
-  schema: ChainSchema,
-  handler: async (ctx, meta) => {
-    const insider = getPersona(meta.insiderPersonaId);
+    // ── Step 4: Outcome ─────────────────────────────────────────────────
     if (!insider) {
       await ctx.run("cleanup", () => removeActiveChain(meta.chainId));
-      return { followUpEvents: [] };
+      return;
     }
 
-    const insiderHandle = insider.handle.replace("@", "");
-    const entities: ContentEntity[] = [
-      { text: meta.ticker, type: "ticker" },
-      { text: meta.companyName, type: "company" },
-      { text: insiderHandle, type: "persona" },
-      { text: insider.displayName, type: "persona" },
-    ];
-
     if (meta.willBeCorrect) {
-      const movePercent = await ctx.run("calc-move", () => Math.floor(Math.random() * 10 + 10)); // 10-20%
-
-      await Promise.all([
-        ctx.run("news-article", async () => {
-          const newsPersonas = getPersonasByType("news");
-          if (newsPersonas.length === 0) return;
-          const newsOrg = pickRandom(newsPersonas);
-          const article = generateNewsArticle("insider-activity", {
-            company: meta.companyName,
-            ticker: meta.ticker,
-            direction: meta.prediction,
-            percent: String(movePercent),
-          });
-          await news.write({
-            ...article,
-            source: newsOrg.id, sourceDisplayName: newsOrg.displayName, entities,
-          });
-        }),
-        ctx.run("market-impact", async () => {
-          const company = COMPANIES.find((c) => c.id === meta.companyId);
-          if (!company || company.sectors.length === 0) return;
-          const sectorId = company.sectors[0].sectorId;
-          const currentIndex = await getSectorIndex(sectorId);
-          const factor = meta.prediction === "up" ? (1 + movePercent / 100) : (1 - movePercent / 100);
-          await market.updateSectorIndex(sectorId, currentIndex * factor);
-          await market.updateSectorStatus(sectorId, meta.prediction === "up" ? "bull" : "bear");
-        })
-      ])
-
-      await ctx.sleep(`outcome-delay-${meta.chainId}`, 20);
-
-      await Promise.all([
-        ctx.run("correct-tweet", async () => {
-          const content = generateTweetContent("insider-correct", insider.type, {
-            ticker: meta.ticker,
-            insiderHandle: insider.handle.replace("@", ""),
-            direction: meta.prediction,
-          });
-          await tweets.write({
-            authorId: insider.id, authorHandle: insider.handle,
-            authorDisplayName: insider.displayName,
-            content, eventChainId: meta.chainId, entities,
-          });
-        }),
-        ctx.run("brag-dm", async () => {
-          const brag = generateDMContent("insider-trading", "brag", {
-            company: meta.companyName, ticker: meta.ticker,
-            prediction: "", direction: meta.prediction, department: "",
-            percent: String(Math.floor(Math.random() * 15 + 3)),
-            amount: `$${Math.floor(Math.random() * 50000 + 5000)}`,
-            sector: "",
-          });
-          await dms.send({
-            fromPersonaId: meta.insiderPersonaId, content: brag,
-            type: "brag",
-            entities: [
-              { text: meta.companyName, type: "company" },
-              { text: meta.ticker, type: "ticker" },
-            ],
-            metadata: { eventChainId: meta.chainId },
-          });
-        }),
-        ctx.run("reaction", async () => {
-          const regulars = getPersonasByType("regular");
-          if (regulars.length === 0) return;
-          const reactor = pickRandom(regulars);
-          const reaction = generateTweetContent("insider-correct", "regular", {
-            ticker: meta.ticker,
-            insiderHandle: insider.handle.replace("@", ""),
-            direction: meta.prediction,
-          });
-          await tweets.write({
-            authorId: reactor.id, authorHandle: reactor.handle,
-            authorDisplayName: reactor.displayName,
-            content: reaction, eventChainId: meta.chainId, entities,
-          });
-        }),
-      ]);
+      await onCorrectPrediction(ctx, meta);
     } else {
-      await Promise.all([
-        ctx.run("wrong-tweet", async () => {
-          const content = generateTweetContent("insider-wrong", insider.type, {
-            ticker: meta.ticker,
-            insiderHandle: insider.handle.replace("@", ""),
-            direction: meta.prediction,
-          });
-          await tweets.write({
-            authorId: insider.id, authorHandle: insider.handle,
-            authorDisplayName: insider.displayName,
-            content, eventChainId: meta.chainId, entities,
-          });
-        }),
-        ctx.run("panic-dm", async () => {
-          const panic = generateDMContent("insider-trading", "panic", {
-            company: meta.companyName, ticker: meta.ticker,
-            prediction: "", direction: meta.prediction === "up" ? "down" : "up",
-            department: "", percent: String(Math.floor(Math.random() * 10 + 3)),
-            amount: "", sector: "",
-          });
-          await dms.send({
-            fromPersonaId: meta.insiderPersonaId, content: panic,
-            type: "panic",
-            entities: [
-              { text: meta.companyName, type: "company" },
-              { text: meta.ticker, type: "ticker" },
-            ],
-            metadata: { eventChainId: meta.chainId },
-          });
-        }),
-        ctx.run("mock-tweet", async () => {
-          const shitposters = getPersonasByType("shitposter");
-          if (shitposters.length === 0) return;
-          const mocker = pickRandom(shitposters);
-          const mock = generateTweetContent("insider-wrong", "shitposter", {
-            ticker: meta.ticker,
-            insiderHandle: insider.handle.replace("@", ""),
-            direction: meta.prediction,
-          });
-          await tweets.write({
-            authorId: mocker.id, authorHandle: mocker.handle,
-            authorDisplayName: mocker.displayName,
-            content: mock, eventChainId: meta.chainId, entities,
-          });
-        }),
-      ]);
+      await onIncorrectPrediction(ctx, meta);
     }
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));
-    return { followUpEvents: [] };
   },
-});
+};
