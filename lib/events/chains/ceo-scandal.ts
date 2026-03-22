@@ -184,21 +184,24 @@ registerEvent({
     if (meta.willResign) {
       const interimCeo = await ctx.run("interim-ceo", () => randomName());
 
+      // Write news first to get the article ID for tweet newsLink
+      const headline = `${meta.companyName} CEO ${meta.ceoName} Steps Down Amid ${meta.scandalShort} Controversy`;
+      const article = await ctx.run("resignation-news", async () => {
+        const newsPersonas = getPersonasByType("news");
+        if (newsPersonas.length === 0) return null;
+        const newsOrg = pickRandom(newsPersonas);
+        return news.write({
+          headline,
+          summary: `The board of ${meta.companyName} has accepted the resignation of CEO ${meta.ceoName} following revelations about ${meta.scandalShort}.`,
+          body: `In a move that stunned the industry, ${meta.companyName} announced today that CEO ${meta.ceoName} has resigned, effective immediately.\n\nThe departure comes after ${meta.scandalDetail}. Sources close to the board describe the situation as "deeply embarrassing."\n\n${meta.ceoName} released a brief statement: "I regret nothing. Well, maybe the ${meta.scandalShort} thing."\n\nInterim CEO ${interimCeo} will assume leadership.`,
+          category: "business",
+          source: newsOrg.id,
+          sourceDisplayName: newsOrg.displayName,
+          entities: [...entities, { text: interimCeo, type: "person" as const }],
+        });
+      });
+
       await Promise.all([
-        ctx.run("resignation-news", async () => {
-          const newsPersonas = getPersonasByType("news");
-          if (newsPersonas.length === 0) return;
-          const newsOrg = pickRandom(newsPersonas);
-          await news.write({
-            headline: `${meta.companyName} CEO ${meta.ceoName} Steps Down Amid ${meta.scandalShort} Controversy`,
-            summary: `The board of ${meta.companyName} has accepted the resignation of CEO ${meta.ceoName} following revelations about ${meta.scandalShort}.`,
-            body: `In a move that stunned the industry, ${meta.companyName} announced today that CEO ${meta.ceoName} has resigned, effective immediately.\n\nThe departure comes after ${meta.scandalDetail}. Sources close to the board describe the situation as "deeply embarrassing."\n\n${meta.ceoName} released a brief statement: "I regret nothing. Well, maybe the ${meta.scandalShort} thing."\n\nInterim CEO ${interimCeo} will assume leadership.`,
-            category: "business",
-            source: newsOrg.id,
-            sourceDisplayName: newsOrg.displayName,
-            entities: [...entities, { text: interimCeo, type: "person" as const }],
-          });
-        }),
         ctx.run("news-tweet", async () => {
           const newsPersonas = getPersonasByType("news");
           if (newsPersonas.length === 0) return;
@@ -213,6 +216,7 @@ registerEvent({
             authorId: persona.id, authorHandle: persona.handle,
             authorDisplayName: persona.displayName,
             content, eventChainId: meta.chainId, entities,
+            newsLink: article ? { newsId: article.id, headline } : undefined,
           });
         }),
         ctx.run("celebration-tweet", async () => {
