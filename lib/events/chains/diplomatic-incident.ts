@@ -73,38 +73,41 @@ registerEvent({
       { text: meta.affectedSector, type: "sector" },
     ];
 
+    // Write news first to get article ID for tweet newsLink
+    const headline = `${meta.country1} and ${meta.country2} Clash Over ${meta.issue}`;
+    const newsArticle = await ctx.run("news-article", async () => {
+      const newsPersonas = getPersonasByType("news");
+      if (newsPersonas.length === 0) return null;
+      const org = pickRandom(newsPersonas);
+      const official1 = randomName();
+      const official2 = randomName();
+      const article = generateNewsArticle("diplomatic-incident", {
+        country1: meta.country1,
+        country2: meta.country2,
+        city: meta.city,
+        issue: meta.issue,
+        incident: meta.issue,
+        official1Name: official1,
+        official1Title: "Minister of Foreign Affairs",
+        official2Name: official2,
+        quote1: "completely unacceptable and frankly embarrassing",
+        quote2: "a gross overreaction to a minor misunderstanding",
+        issueDetail: `overlapping claims related to ${meta.issue}`,
+        previousIncident: "last year's trade tariff disagreement",
+        affectedSectors: meta.affectedSector,
+        mainIndex: "Global",
+        indexDirection: "down",
+        indexPercent: (Math.random() * 2 + 0.3).toFixed(1),
+      });
+      return news.write({
+        ...article,
+        source: org.id,
+        sourceDisplayName: org.displayName,
+        entities: [...entities, { text: official1, type: "person" as const }, { text: official2, type: "person" as const }],
+      });
+    });
+
     await Promise.all([
-      ctx.run("news-article", async () => {
-        const newsPersonas = getPersonasByType("news");
-        if (newsPersonas.length === 0) return;
-        const org = pickRandom(newsPersonas);
-        const official1 = randomName();
-        const official2 = randomName();
-        const article = generateNewsArticle("diplomatic-incident", {
-          country1: meta.country1,
-          country2: meta.country2,
-          city: meta.city,
-          issue: meta.issue,
-          incident: meta.issue,
-          official1Name: official1,
-          official1Title: "Minister of Foreign Affairs",
-          official2Name: official2,
-          quote1: "completely unacceptable and frankly embarrassing",
-          quote2: "a gross overreaction to a minor misunderstanding",
-          issueDetail: `overlapping claims related to ${meta.issue}`,
-          previousIncident: "last year's trade tariff disagreement",
-          affectedSectors: meta.affectedSector,
-          mainIndex: "Global",
-          indexDirection: "down",
-          indexPercent: (Math.random() * 2 + 0.3).toFixed(1),
-        });
-        await news.write({
-          ...article,
-          source: org.id,
-          sourceDisplayName: org.displayName,
-          entities: [...entities, { text: official1, type: "person" as const }, { text: official2, type: "person" as const }],
-        });
-      }),
       ctx.run("breaking-tweet", async () => {
         const newsPersonas = getPersonasByType("news");
         if (newsPersonas.length === 0) return;
@@ -121,6 +124,7 @@ registerEvent({
           authorDisplayName: persona.displayName,
           content,
           eventChainId: meta.chainId,
+          newsLink: newsArticle ? { newsId: newsArticle.id, headline } : undefined,
           entities,
         });
       }),
