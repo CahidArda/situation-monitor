@@ -76,4 +76,7 @@ export async function loadAllChains() {
   await import("./chains/noise");
   await import("./chains/insider-trading");
   await import("./chains/ceo-scandal");
+  await import("./chains/diplomatic-incident");
+  await import("./chains/pump-and-dump");
+  await import("./chains/product-launch");
 }

@@ -10,6 +10,7 @@ import { DM_PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/per
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
 import { generateDMContent } from "../templates/dms";
+import { generateNewsArticle } from "../templates/news";
 import type { ContentEntity } from "@/lib/interfaces/types";
 
 // ---------------------------------------------------------------------------
@@ -227,11 +228,14 @@ registerEvent({
           const newsPersonas = getPersonasByType("news");
           if (newsPersonas.length === 0) return;
           const newsOrg = pickRandom(newsPersonas);
+          const article = generateNewsArticle("insider-activity", {
+            company: meta.companyName,
+            ticker: meta.ticker,
+            direction: meta.prediction,
+            percent: String(Math.floor(Math.random() * 12 + 3)),
+          });
           await news.write({
-            headline: `${meta.companyName} (${meta.ticker}) Shares ${meta.prediction === "up" ? "Surge" : "Drop"} on Market Activity`,
-            summary: `Unusual trading in ${meta.ticker} preceded today's sharp ${meta.prediction === "up" ? "rise" : "decline"}.`,
-            body: `${meta.companyName} shares moved sharply ${meta.prediction} today amid what analysts describe as "unusual activity."\n\nSeveral social media accounts appeared to anticipate the move, raising questions about potential information leaks.\n\nRegulators have not commented.`,
-            category: "markets",
+            ...article,
             source: newsOrg.id, sourceDisplayName: newsOrg.displayName, entities,
           });
         }),

@@ -88,6 +88,20 @@ export type MarketCrashParams = {
   analystQuote: string;
 };
 
+export type RegulatoryInvestigationParams = {
+  company: string;
+  ticker: string;
+  percent: string;
+  detail: string;
+};
+
+export type InsiderActivityParams = {
+  company: string;
+  ticker: string;
+  direction: string;
+  percent: string;
+};
+
 // ---------------------------------------------------------------------------
 // Template type
 // ---------------------------------------------------------------------------
@@ -98,7 +112,9 @@ export type NewsEventType =
   | "diplomatic-incident"
   | "arrest"
   | "product-launch"
-  | "market-crash";
+  | "market-crash"
+  | "regulatory-investigation"
+  | "insider-activity";
 
 type NewsTemplate<P> = {
   headline: (p: P) => string;
@@ -114,6 +130,8 @@ type NewsEventParams = {
   "arrest": ArrestParams;
   "product-launch": ProductLaunchParams;
   "market-crash": MarketCrashParams;
+  "regulatory-investigation": RegulatoryInvestigationParams;
+  "insider-activity": InsiderActivityParams;
 };
 
 // ---------------------------------------------------------------------------
@@ -224,6 +242,38 @@ The selloff was triggered by ${p.reason}. "${p.analystQuote}," said ${p.analystN
 
 Investors are advised to monitor the situation closely as the sector searches for a floor.`,
       category: "breaking",
+    },
+  ],
+
+  "regulatory-investigation": [
+    {
+      headline: (p) =>
+        `Regulators Investigating Unusual Trading in ${p.company} (${p.ticker})`,
+      summary: (p) =>
+        `${p.ticker} shares dropped ${p.percent}% after a sharp spike, drawing regulatory attention.`,
+      body: (p) =>
+        `${p.company} (${p.ticker}) experienced a dramatic reversal today, falling ${p.percent}% after an unexplained surge earlier in the session.
+
+${p.detail}
+
+Several accounts that promoted ${p.ticker} have since gone quiet.`,
+      category: "breaking",
+    },
+  ],
+
+  "insider-activity": [
+    {
+      headline: (p) =>
+        `${p.company} (${p.ticker}) Shares ${p.direction === "up" ? "Surge" : "Drop"} ${p.percent}% on Unusual Activity`,
+      summary: (p) =>
+        `Unusual trading patterns in ${p.ticker} preceded today's sharp ${p.direction === "up" ? "rise" : "decline"}.`,
+      body: (p) =>
+        `${p.company} shares moved sharply ${p.direction} ${p.percent}% today amid what analysts describe as "unusual activity."
+
+Several social media accounts appeared to anticipate the move, raising questions about potential information leaks.
+
+Regulators have not commented on the situation.`,
+      category: "markets",
     },
   ],
 };

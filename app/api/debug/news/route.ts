@@ -140,6 +140,24 @@ const GENERATORS: Record<NewsEventType, () => Parameters<typeof generateNewsArti
       analystQuote: "This is exactly the kind of situation one should be monitoring",
     };
   },
+  "regulatory-investigation": () => {
+    const company = pickRandom(COMPANIES);
+    return {
+      company: company.name,
+      ticker: company.ticker,
+      percent: (Math.random() * 15 + 5).toFixed(1),
+      detail: 'Regulators are investigating "coordinated social media activity" that preceded the price spike.',
+    };
+  },
+  "insider-activity": () => {
+    const company = pickRandom(COMPANIES);
+    return {
+      company: company.name,
+      ticker: company.ticker,
+      direction: Math.random() > 0.5 ? "up" : "down",
+      percent: (Math.random() * 12 + 3).toFixed(1),
+    };
+  },
 };
 
 export async function POST() {
