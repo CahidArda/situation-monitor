@@ -6,7 +6,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "news", label: "News" },
-  { id: "market", label: "Market", disabled: true },
+  { id: "market", label: "Market" },
   { id: "portfolio", label: "Portfolio", disabled: true },
   { id: "dms", label: "DMs" },
 ];

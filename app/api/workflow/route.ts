@@ -1,6 +1,7 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { loadAllChains, selectSeedEvent, getEvent } from "@/lib/events/registry";
 import { incrementTick, setLastEventTime } from "@/lib/events/state";
+import { market } from "@/lib/market/market";
 import { getTweetIndex, getNewsIndex, getDMIndex } from "@/lib/search";
 import type { EventResult } from "@/lib/interfaces/events";
 import type { WorkflowContext } from "@upstash/workflow";
@@ -14,6 +15,7 @@ export const { POST } = serve(async (ctx) => {
   if (trigger.type === "seed") {
     await ctx.run("increment-tick", () => incrementTick());
     await ctx.run("set-last-event-time", () => setLastEventTime());
+    await ctx.run("market-tick", () => market.tick());
 
     const seedName = await ctx.run("select-seed", async () => {
       const selected = await selectSeedEvent();

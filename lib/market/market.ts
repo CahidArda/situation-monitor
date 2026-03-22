@@ -1,0 +1,212 @@
+import { redis } from "@/lib/redis";
+import { COMPANIES } from "./companies";
+import { SECTORS } from "./sectors";
+import { COMMODITIES } from "./commodities";
+import {
+  calculateStockPrice,
+  calculateCommodityPrice,
+  updateSectorIndex as calcSectorIndex,
+  calculateGlobalIndex,
+} from "./pricing";
+import {
+  getSectorStatus,
+  getSectorIndex,
+  setSectorIndex,
+  setSectorStatus,
+} from "@/lib/events/state";
+import type { MarketInterface, CompanyWithPrice, CommodityWithPrice, SectorWithState } from "@/lib/interfaces/market";
+import type { SectorStatus } from "@/lib/interfaces/types";
+
+const HISTORY_MAX = 200;
+
+async function getMarketTick(): Promise<number> {
+  return (await redis.get<number>("market:tick")) ?? 0;
+}
+
+async function getMarketSeed(): Promise<number> {
+  let seed = await redis.get<number>("market:seed");
+  if (seed == null) {
+    seed = Math.floor(Math.random() * 1_000_000);
+    await redis.set("market:seed", seed);
+  }
+  return seed;
+}
+
+async function getSectorIndexes(): Promise<Record<string, number>> {
+  const indexes: Record<string, number> = {};
+  for (const sector of SECTORS) {
+    indexes[sector.id] = await getSectorIndex(sector.id);
+  }
+  return indexes;
+}
+
+async function getPreviousPrices(): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  const tick = await getMarketTick();
+  if (tick <= 0) return prices;
+
+  // Read last stored prices from history
+  for (const c of COMPANIES) {
+    const last = await redis.zrange<string[]>(
+      `market:history:company:${c.id}`,
+      -1,
+      -1,
+    );
+    if (last && last.length > 0) prices[c.id] = Number(last[0]);
+  }
+  for (const c of COMMODITIES) {
+    const last = await redis.zrange<string[]>(
+      `market:history:commodity:${c.id}`,
+      -1,
+      -1,
+    );
+    if (last && last.length > 0) prices[c.id] = Number(last[0]);
+  }
+  const globalLast = await redis.zrange<string[]>("market:history:global", -1, -1);
+  if (globalLast && globalLast.length > 0) prices["__global"] = Number(globalLast[0]);
+
+  return prices;
+}
+
+export const market: MarketInterface = {
+  async getPrices() {
+    const tick = await getMarketTick();
+    const seed = await getMarketSeed();
+    const sectorIndexes = await getSectorIndexes();
+    const prevPrices = await getPreviousPrices();
+
+    const companies: CompanyWithPrice[] = COMPANIES.map((c) => {
+      const currentPrice = calculateStockPrice(c, sectorIndexes, tick, seed);
+      const prevPrice = prevPrices[c.id] ?? currentPrice;
+      const change = currentPrice - prevPrice;
+      const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+      return { ...c, currentPrice, change, changePercent };
+    });
+
+    const commodities: CommodityWithPrice[] = COMMODITIES.map((c) => {
+      const sectorIndex = sectorIndexes[c.sectorId] ?? 100;
+      const currentPrice = calculateCommodityPrice(
+        c.basePrice, sectorIndex, c.volatilityMultiplier, tick, seed, c.id,
+      );
+      const prevPrice = prevPrices[c.id] ?? currentPrice;
+      const change = currentPrice - prevPrice;
+      const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+      return { ...c, currentPrice, change, changePercent };
+    });
+
+    const sectors: SectorWithState[] = await Promise.all(
+      SECTORS.map(async (s) => ({
+        ...s,
+        status: await getSectorStatus(s.id),
+        indexValue: sectorIndexes[s.id] ?? 100,
+      })),
+    );
+
+    const globalValue = calculateGlobalIndex(sectorIndexes);
+    const prevGlobal = prevPrices["__global"] ?? globalValue;
+    const globalChange = globalValue - prevGlobal;
+    const globalChangePercent = prevGlobal > 0 ? (globalChange / prevGlobal) * 100 : 0;
+
+    return {
+      companies,
+      commodities,
+      sectors,
+      globalIndex: { value: globalValue, change: globalChange, changePercent: globalChangePercent },
+    };
+  },
+
+  async getPriceHistory({ type, id, lastN = 50 }) {
+    const key =
+      type === "global"
+        ? "market:history:global"
+        : `market:history:${type}:${id}`;
+
+    // zrange with scores returns [member, score, member, score, ...]
+    const raw = await redis.zrange<string[]>(key, -lastN, -1, { withScores: true });
+    if (!raw || raw.length === 0) return [];
+
+    const result: Array<{ tick: number; price: number }> = [];
+    for (let i = 0; i < raw.length; i += 2) {
+      result.push({ price: Number(raw[i]), tick: Number(raw[i + 1]) });
+    }
+    return result;
+  },
+
+  async getCompany(companyId) {
+    const company = COMPANIES.find((c) => c.id === companyId);
+    if (!company) return null;
+    const tick = await getMarketTick();
+    const seed = await getMarketSeed();
+    const sectorIndexes = await getSectorIndexes();
+    const currentPrice = calculateStockPrice(company, sectorIndexes, tick, seed);
+    return { ...company, currentPrice };
+  },
+
+  async updateSectorIndex(sectorId, newValue) {
+    await setSectorIndex(sectorId, newValue);
+  },
+
+  async updateSectorStatus(sectorId, status) {
+    await setSectorStatus(sectorId, status as SectorStatus);
+  },
+
+  async updateCompanyBaseValue(_companyId, _newBaseValue) {
+    // For v1, base values are static in code. This will store overrides later.
+  },
+
+  async tick() {
+    const tick = await redis.incr("market:tick");
+    const seed = await getMarketSeed();
+
+    // Update each sector's index based on its status
+    for (const sector of SECTORS) {
+      const status = await getSectorStatus(sector.id);
+      const currentIndex = await getSectorIndex(sector.id);
+      const newIndex = calcSectorIndex(
+        currentIndex, status, sector.baseVolatility, tick, seed, sector.id,
+      );
+      await setSectorIndex(sector.id, newIndex);
+
+      // Store sector history
+      await redis.zadd(`market:history:sector:${sector.id}`, {
+        score: tick,
+        member: String(newIndex),
+      });
+      await redis.zremrangebyrank(`market:history:sector:${sector.id}`, 0, -(HISTORY_MAX + 1));
+    }
+
+    // Compute and store company prices
+    const sectorIndexes = await getSectorIndexes();
+    for (const company of COMPANIES) {
+      const price = calculateStockPrice(company, sectorIndexes, tick, seed);
+      await redis.zadd(`market:history:company:${company.id}`, {
+        score: tick,
+        member: String(price),
+      });
+      await redis.zremrangebyrank(`market:history:company:${company.id}`, 0, -(HISTORY_MAX + 1));
+    }
+
+    // Compute and store commodity prices
+    for (const commodity of COMMODITIES) {
+      const sectorIndex = sectorIndexes[commodity.sectorId] ?? 100;
+      const price = calculateCommodityPrice(
+        commodity.basePrice, sectorIndex, commodity.volatilityMultiplier,
+        tick, seed, commodity.id,
+      );
+      await redis.zadd(`market:history:commodity:${commodity.id}`, {
+        score: tick,
+        member: String(price),
+      });
+      await redis.zremrangebyrank(`market:history:commodity:${commodity.id}`, 0, -(HISTORY_MAX + 1));
+    }
+
+    // Global index
+    const globalIndex = calculateGlobalIndex(sectorIndexes);
+    await redis.set("market:global_index", globalIndex);
+    await redis.zadd("market:history:global", {
+      score: tick,
+      member: String(globalIndex),
+    });
+    await redis.zremrangebyrank("market:history:global", 0, -(HISTORY_MAX + 1));
+  },
+};
