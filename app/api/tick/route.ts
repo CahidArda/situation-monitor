@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@upstash/qstash";
 import { getLastEventTime, setLastEventTime } from "@/lib/events/state";
 
 const EVENT_COOLDOWN_MS = 60_000; // 1 minute between events
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const lastEventTime = await getLastEventTime();
   const elapsed = Date.now() - lastEventTime;
 
@@ -21,12 +21,8 @@ export async function POST() {
   // Trigger the workflow
   const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
 
-  const baseUrl =
-    process.env.UPSTASH_WORKFLOW_URL ??
-    process.env.VERCEL_URL ??
-    "http://localhost:3000";
-
-  const workflowUrl = `${baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`}/api/workflow`;
+  const { origin } = new URL(req.url);
+  const workflowUrl = `${origin}/api/workflow`;
 
   await qstash.publishJSON({
     url: workflowUrl,
