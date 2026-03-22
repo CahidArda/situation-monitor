@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Client } from "@upstash/qstash";
+import { Client } from "@upstash/workflow";
 import { getLastEventTime, setLastEventTime } from "@/lib/events/state";
 import { EVENT_COOLDOWN_TICKS, TICK_DURATION_MS } from "@/lib/constants";
 
@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
   await setLastEventTime();
 
   // Trigger the workflow
-  const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+  const client = new Client({ token: process.env.QSTASH_TOKEN! });
 
   const { origin } = new URL(req.url);
   const workflowUrl = `${origin}/api/workflow`;
 
-  await qstash.publishJSON({
+  await client.trigger({
     url: workflowUrl,
     body: { type: "seed" },
   });
