@@ -26,21 +26,13 @@ export function useActiveTab() {
 }
 
 export function useNavigateToDM() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+  // DMs are now in the bottom bar — just open the conversation there
   return useCallback(
     (personaId: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", "dms");
-      params.set("dm", personaId);
-      params.delete("news");
-      params.delete("ticker");
-      params.delete("sector");
-      router.push(`${pathname}?${params}`);
+      const { useDMStore } = require("@/stores/dms");
+      useDMStore.getState().openConversation(personaId);
     },
-    [searchParams, router, pathname],
+    [],
   );
 }
 

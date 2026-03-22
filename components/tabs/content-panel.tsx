@@ -2,7 +2,6 @@
 
 import { NewsTab } from "@/components/news/news-tab";
 import { MarketTab } from "@/components/market/market-tab";
-import { DMsTab } from "@/components/dms/dms-tab";
 
 export function ContentPanel({ activeTab }: { activeTab: string }) {
   return (
@@ -14,7 +13,6 @@ export function ContentPanel({ activeTab }: { activeTab: string }) {
           <p className="text-muted-foreground text-sm">Portfolio — coming soon</p>
         </div>
       )}
-      {activeTab === "dms" && <DMsTab />}
     </div>
   );
 }

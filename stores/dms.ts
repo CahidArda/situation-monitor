@@ -4,35 +4,47 @@ import type { DMConversation, DirectMessage } from "@/lib/interfaces/types";
 
 type DMStore = {
   conversations: DMConversation[];
-  activeConversation: string | null;
   messages: Record<string, DirectMessage[]>;
   readTimestamps: Record<string, number>;
+  openConversations: string[]; // persona IDs pinned in the bottom bar
 
   setConversations: (data: DMConversation[]) => void;
   setMessages: (personaId: string, messages: DirectMessage[]) => void;
-  setActiveConversation: (personaId: string | null) => void;
   markRead: (personaId: string) => void;
   getUnreadCount: (personaId: string) => number;
   getTotalUnread: () => number;
+  openConversation: (personaId: string) => void;
+  closeConversation: (personaId: string) => void;
 };
 
 export const useDMStore = create<DMStore>()(
   persist(
     (set, get) => ({
       conversations: [],
-      activeConversation: null,
       messages: {},
       readTimestamps: {},
+      openConversations: [],
 
-      setConversations: (data) => set({ conversations: data }),
+      setConversations: (data) => {
+        const state = get();
+        // Auto-open conversations that have new unread messages
+        const newOpen = [...state.openConversations];
+        for (const convo of data) {
+          const lastRead = state.readTimestamps[convo.personaId] ?? 0;
+          if (
+            convo.lastTimestamp > lastRead &&
+            !newOpen.includes(convo.personaId)
+          ) {
+            newOpen.push(convo.personaId);
+          }
+        }
+        set({ conversations: data, openConversations: newOpen });
+      },
 
       setMessages: (personaId, messages) =>
         set((state) => ({
           messages: { ...state.messages, [personaId]: messages },
         })),
-
-      setActiveConversation: (personaId) =>
-        set({ activeConversation: personaId }),
 
       markRead: (personaId) =>
         set((state) => ({
@@ -59,10 +71,27 @@ export const useDMStore = create<DMStore>()(
           return total + (convo.lastTimestamp > lastRead ? 1 : 0);
         }, 0);
       },
+
+      openConversation: (personaId) =>
+        set((state) => ({
+          openConversations: state.openConversations.includes(personaId)
+            ? state.openConversations
+            : [...state.openConversations, personaId],
+        })),
+
+      closeConversation: (personaId) =>
+        set((state) => ({
+          openConversations: state.openConversations.filter(
+            (id) => id !== personaId,
+          ),
+        })),
     }),
     {
       name: "mts:dms",
-      partialize: (state) => ({ readTimestamps: state.readTimestamps }),
+      partialize: (state) => ({
+        readTimestamps: state.readTimestamps,
+        openConversations: state.openConversations,
+      }),
     },
   ),
 );

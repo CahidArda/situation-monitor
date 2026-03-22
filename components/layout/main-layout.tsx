@@ -10,6 +10,7 @@ import { Header } from "./header";
 import { TabBar } from "./tab-bar";
 import { ContentPanel } from "@/components/tabs/content-panel";
 import { FeedPanel } from "@/components/feed/feed-panel";
+import { DMBar } from "@/components/dms/dm-bar";
 import { useActiveTab } from "@/hooks/use-tab";
 import { useTick } from "@/hooks/use-tick";
 import { useDMConversations } from "@/hooks/use-dms";
@@ -20,7 +21,6 @@ import { playNotificationSound } from "@/lib/sounds";
 
 function MainLayoutInner() {
   const { activeTab, setActiveTab } = useActiveTab();
-  const totalUnread = useDMStore((s) => s.getTotalUnread());
   const setConversations = useDMStore((s) => s.setConversations);
   const setPrices = useMarketStore((s) => s.setPrices);
 
@@ -60,7 +60,6 @@ function MainLayoutInner() {
               <TabBar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                badge={totalUnread > 0 ? { dms: totalUnread } : undefined}
               />
               <ContentPanel activeTab={activeTab} />
             </div>
@@ -78,6 +77,7 @@ function MainLayoutInner() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+      <DMBar />
     </div>
   );
 }
