@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useMarketPrices } from "@/hooks/use-market";
 import { useMarketStore } from "@/stores/market";
+import { COMPANIES } from "@/lib/market/companies";
 import { GlobalIndexBar } from "./global-index-bar";
 import { SectorRow } from "./sector-row";
-import { CommodityRow } from "./commodity-row";
 import { CompanyTable } from "./company-table";
 import { CompanyDetail } from "./company-detail";
 
 export function MarketTab() {
+  const searchParams = useSearchParams();
   const { data, isLoading } = useMarketPrices();
   const setPrices = useMarketStore((s) => s.setPrices);
   const companies = useMarketStore((s) => s.companies);
@@ -18,12 +20,31 @@ export function MarketTab() {
   const sectors = useMarketStore((s) => s.sectors);
   const globalIndex = useMarketStore((s) => s.globalIndex);
   const selectedCompanyId = useMarketStore((s) => s.selectedCompanyId);
-  const selectedSectorId = useMarketStore((s) => s.selectedSectorId);
+  const selectedSectorIds = useMarketStore((s) => s.selectedSectorIds);
   const selectCompany = useMarketStore((s) => s.selectCompany);
+  const toggleSector = useMarketStore((s) => s.toggleSector);
 
   useEffect(() => {
     if (data) setPrices(data);
   }, [data, setPrices]);
+
+  // Read query params for deep linking
+  const tickerParam = searchParams.get("ticker");
+  const sectorParam = searchParams.get("sector");
+
+  useEffect(() => {
+    if (tickerParam && companies.length > 0) {
+      const company = companies.find((c) => c.ticker === tickerParam) ??
+        COMPANIES.find((c) => c.ticker === tickerParam);
+      if (company) selectCompany(company.id);
+    }
+  }, [tickerParam, companies, selectCompany]);
+
+  useEffect(() => {
+    if (sectorParam && !selectedSectorIds.includes(sectorParam)) {
+      toggleSector(sectorParam);
+    }
+  }, [sectorParam, selectedSectorIds, toggleSector]);
 
   // Company detail view
   if (selectedCompanyId) {
@@ -46,9 +67,11 @@ export function MarketTab() {
     );
   }
 
-  // Filter companies by selected sector
-  const filteredCompanies = selectedSectorId
-    ? companies.filter((c) => c.sectors.some((s) => s.sectorId === selectedSectorId))
+  // Filter companies by selected sectors
+  const filteredCompanies = selectedSectorIds.length > 0
+    ? companies.filter((c) =>
+        c.sectors.some((s) => selectedSectorIds.includes(s.sectorId)),
+      )
     : companies;
 
   return (
@@ -57,9 +80,10 @@ export function MarketTab() {
         value={globalIndex.value}
         change={globalIndex.change}
         changePercent={globalIndex.changePercent}
+        commodities={commodities}
       />
+      <div className="my-2" />
       <SectorRow sectors={sectors} />
-      <CommodityRow commodities={commodities} />
       <CompanyTable companies={filteredCompanies} />
     </div>
   );

@@ -5,6 +5,7 @@ import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state
 import { tweets } from "@/lib/tweets";
 import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
+import { market } from "@/lib/market/market";
 import { getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom, SCANDAL_REASONS } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
@@ -231,6 +232,14 @@ registerEvent({
           });
         }),
       ]);
+
+      // CEO resignation makes the company's primary sector volatile
+      await ctx.run("market-impact", async () => {
+        const company = COMPANIES.find((c) => c.id === meta.companyId);
+        if (!company || company.sectors.length === 0) return;
+        const sectorId = company.sectors[0].sectorId;
+        await market.updateSectorStatus(sectorId, "volatile");
+      });
     } else {
       await Promise.all([
         ctx.run("survived-news", async () => {

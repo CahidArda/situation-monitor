@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
+import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
 import { tweets } from "@/lib/tweets";
 import { dms } from "@/lib/dms";
 import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
+import { market } from "@/lib/market/market";
 import { DM_PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
@@ -229,6 +230,16 @@ registerEvent({
         });
       }),
     ]);
+
+    // Decrease the company's primary sector index by 1-3%
+    await ctx.run("market-impact", async () => {
+      const company = COMPANIES.find((c) => c.name === meta.companyName);
+      if (!company || company.sectors.length === 0) return;
+      const sectorId = company.sectors[0].sectorId;
+      const currentIndex = await getSectorIndex(sectorId);
+      const drop = 1 + Math.random() * 2; // 1-3%
+      await market.updateSectorIndex(sectorId, currentIndex * (1 - drop / 100));
+    });
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));
     return { followUpEvents: [] };

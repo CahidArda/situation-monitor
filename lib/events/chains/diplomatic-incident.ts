@@ -6,6 +6,7 @@ import { tweets } from "@/lib/tweets";
 import { news } from "@/lib/news";
 import { dms } from "@/lib/dms";
 import { SECTORS } from "@/lib/market/sectors";
+import { market } from "@/lib/market/market";
 import { DM_PERSONAS, getPersonasByType } from "@/lib/simulation/personas";
 import {
   pickRandom,
@@ -139,6 +140,13 @@ registerEvent({
         });
       }),
     ]);
+
+    // Set the affected sector to volatile
+    await ctx.run("market-impact", async () => {
+      const sector = SECTORS.find((s) => s.name === meta.affectedSector);
+      if (!sector) return;
+      await market.updateSectorStatus(sector.id, "volatile");
+    });
 
     const delay = await ctx.run("delay", () => 15 + Math.floor(Math.random() * 15));
     return {

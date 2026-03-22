@@ -58,7 +58,10 @@ export function CompanyDetail({
 
         {prices.length > 1 && (
           <div className="mb-6 border border-border rounded p-4">
-            <Sparkline data={prices} width={500} height={80} />
+            <div className="text-xs text-muted-foreground mb-2">
+              Price history (last {prices.length} ticks, ~1 tick/min)
+            </div>
+            <Sparkline data={prices} width={500} height={100} showLabels />
           </div>
         )}
 

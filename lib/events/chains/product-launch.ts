@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
+import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
 import { tweets } from "@/lib/tweets";
 import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
+import { market } from "@/lib/market/market";
 import { getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom, RIDICULOUS_PRODUCTS } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
@@ -231,6 +232,16 @@ registerEvent({
           });
         }),
       ]);
+
+      // Bump sector index by 1-2%
+      await ctx.run("market-impact", async () => {
+        const company = COMPANIES.find((c) => c.name === meta.companyName);
+        if (!company || company.sectors.length === 0) return;
+        const sectorId = company.sectors[0].sectorId;
+        const currentIndex = await getSectorIndex(sectorId);
+        const bump = 1 + Math.random(); // 1-2%
+        await market.updateSectorIndex(sectorId, currentIndex * (1 + bump / 100));
+      });
     } else {
       await Promise.all([
         ctx.run("flop-news", async () => {
@@ -261,6 +272,16 @@ registerEvent({
           });
         }),
       ]);
+
+      // Dip sector index by 1-2%
+      await ctx.run("market-impact", async () => {
+        const company = COMPANIES.find((c) => c.name === meta.companyName);
+        if (!company || company.sectors.length === 0) return;
+        const sectorId = company.sectors[0].sectorId;
+        const currentIndex = await getSectorIndex(sectorId);
+        const dip = 1 + Math.random(); // 1-2%
+        await market.updateSectorIndex(sectorId, currentIndex * (1 - dip / 100));
+      });
     }
 
     await ctx.run("finish-chain", () => removeActiveChain(meta.chainId));

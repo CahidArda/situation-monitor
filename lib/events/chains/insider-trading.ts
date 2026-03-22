@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { registerSeedEvent, registerEvent } from "../registry";
-import { addActiveChain, removeActiveChain, getActiveChainCount } from "../state";
+import { addActiveChain, removeActiveChain, getActiveChainCount, getSectorIndex } from "../state";
 import { tweets } from "@/lib/tweets";
 import { dms } from "@/lib/dms";
 import { news } from "@/lib/news";
 import { COMPANIES } from "@/lib/market/companies";
+import { market } from "@/lib/market/market";
 import { DM_PERSONAS, getPersona, getPersonasByType } from "@/lib/simulation/personas";
 import { pickRandom } from "@/lib/simulation/world";
 import { generateTweetContent } from "../templates/tweets";
@@ -257,6 +258,15 @@ registerEvent({
           });
         }),
       ]);
+
+      // Boost the company's primary sector index by 2-5%
+      await ctx.run("market-impact", async () => {
+        const company = COMPANIES.find((c) => c.id === meta.companyId);
+        if (!company || company.sectors.length === 0) return;
+        const sectorId = company.sectors[0].sectorId;
+        const currentIndex = await getSectorIndex(sectorId);
+        await market.updateSectorIndex(sectorId, currentIndex * 1.03);
+      });
     } else {
       await Promise.all([
         ctx.run("wrong-tweet", async () => {
