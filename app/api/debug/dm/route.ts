@@ -36,6 +36,11 @@ export async function POST() {
     fromPersonaId: personaId,
     content,
     type: dmType,
+    entities: [
+      { text: company.name, type: "company" },
+      { text: company.ticker, type: "ticker" },
+      { text: sector.name, type: "sector" },
+    ],
   });
 
   await getDMIndex().waitIndexing();

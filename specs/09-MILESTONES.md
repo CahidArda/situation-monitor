@@ -187,9 +187,13 @@ The simulation runs while the app is open. Every ~60 seconds, a seed event fires
    - Reply-like tweet chains (quote-tweet style references)
    - News accounts tweeting links to their own articles
 
-5. **UI polish**
-   - "MONITORING THE SITUATION" header with animated radar
-   - Ticker tape at top (scrolling text of price changes / breaking news)
+5. **Sound effects**
+   - Single notification sound (Web Audio API tone, no audio files)
+   - Debounced: at most once per 3 seconds
+   - Plays when new tweets are detected via polling
+
+6. **UI polish**
+   - "SITUATION MONITOR" header bar
    - Loading states, empty states, error states
    - Mobile responsive layout
    - Smooth animations on new content

@@ -76,6 +76,7 @@ export type DirectMessage = {
   content: string;
   timestamp: number;
   type: DMType;
+  entities?: ContentEntity[];
   metadata?: DMMetadata;
 }
 

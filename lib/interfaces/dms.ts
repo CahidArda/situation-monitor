@@ -1,4 +1,4 @@
-import type { DirectMessage, DMConversation, DMType, DMMetadata } from "./types";
+import type { ContentEntity, DirectMessage, DMConversation, DMType, DMMetadata } from "./types";
 
 export interface DMInterface {
   /** Send a DM (called by event handlers). */
@@ -6,6 +6,7 @@ export interface DMInterface {
     fromPersonaId: string;
     content: string;
     type: DMType;
+    entities?: ContentEntity[];
     metadata?: DMMetadata;
   }): Promise<DirectMessage>;
 

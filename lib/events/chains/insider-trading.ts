@@ -91,6 +91,10 @@ registerEvent({
         fromPersonaId: meta.insiderPersonaId,
         content,
         type: "tip",
+        entities: [
+          { text: meta.companyName, type: "company" },
+          { text: meta.ticker, type: "ticker" },
+        ],
         metadata: {
           eventChainId: meta.chainId,
           relatedCompany: meta.companyId,

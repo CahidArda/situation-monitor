@@ -8,7 +8,7 @@ import type { DMInterface } from "./interfaces/dms";
 const index = getDMIndex();
 
 export const dms: DMInterface = {
-  async send({ fromPersonaId, content, type, metadata }) {
+  async send({ fromPersonaId, content, type, entities, metadata }) {
     const persona = getPersona(fromPersonaId);
 
     const dm: DirectMessage = {
@@ -19,6 +19,7 @@ export const dms: DMInterface = {
       content,
       timestamp: Date.now(),
       type,
+      entities,
       metadata,
     };
 

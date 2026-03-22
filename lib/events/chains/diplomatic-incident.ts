@@ -11,7 +11,6 @@ import {
   pickRandom,
   pickRandomCountryPair,
   DIPLOMATIC_CAUSES,
-  ANALYST_FIRMS,
 } from "@/lib/simulation/world";
 import { randomName } from "@/lib/simulation/names";
 import { generateTweetContent } from "../templates/tweets";

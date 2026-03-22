@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, X } from "lucide-react";
+import { playNotificationSound } from "@/lib/sounds";
 import { useNews } from "@/hooks/use-news";
 import { useNewsStore } from "@/stores/news";
 import { useNavigateToNews } from "@/hooks/use-tab";
@@ -20,8 +21,13 @@ export function NewsTab() {
   const selectedArticle = useNewsStore((s) => s.selectedArticle);
   const selectArticle = useNewsStore((s) => s.selectArticle);
 
+  const prevArticleCount = useRef(0);
   useEffect(() => {
     if (data?.articles) {
+      if (data.articles.length > prevArticleCount.current && prevArticleCount.current > 0) {
+        playNotificationSound();
+      }
+      prevArticleCount.current = data.articles.length;
       setArticles(data.articles);
     }
   }, [data, setArticles]);

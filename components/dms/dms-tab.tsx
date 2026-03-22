@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { playNotificationSound } from "@/lib/sounds";
 import { useDMConversations } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
 import { ConversationList } from "./conversation-list";
@@ -30,8 +31,13 @@ export function DMsTab() {
     router.push(`${pathname}?${params}`);
   };
 
+  const prevConvoCount = useRef(0);
   useEffect(() => {
     if (data?.conversations) {
+      if (data.conversations.length > prevConvoCount.current && prevConvoCount.current > 0) {
+        playNotificationSound();
+      }
+      prevConvoCount.current = data.conversations.length;
       setConversations(data.conversations);
     }
   }, [data, setConversations]);

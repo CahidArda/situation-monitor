@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useTweets, useNewTweetCount } from "@/hooks/use-tweets";
 import { useFeedStore } from "@/stores/feed";
+import { playNotificationSound } from "@/lib/sounds";
 import { NewTweetsBanner } from "./new-tweets-banner";
 import { TweetList } from "./tweet-list";
 
@@ -26,8 +27,11 @@ export function FeedPanel() {
     filter ? 0 : latestTimestamp, // disable polling when filtered
   );
 
+  const prevCount = useRef(0);
   useEffect(() => {
     if (countData != null) {
+      if (countData > prevCount.current) playNotificationSound();
+      prevCount.current = countData;
       setNewTweetCount(countData);
     }
   }, [countData, setNewTweetCount]);

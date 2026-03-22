@@ -5,6 +5,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { useDMMessages } from "@/hooks/use-dms";
 import { useDMStore } from "@/stores/dms";
 import { UserPopover } from "@/components/user-popover";
+import { HoverableContent } from "@/components/hoverable-content";
 import type { DirectMessage } from "@/lib/interfaces/types";
 
 const EMPTY_MESSAGES: DirectMessage[] = [];
@@ -21,7 +22,7 @@ function MessageBubble({ message }: { message: DirectMessage }) {
     <div className="px-4 py-1.5">
       <div className="inline-block max-w-[85%] rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
         <p className="text-sm text-foreground whitespace-pre-wrap">
-          {message.content}
+          <HoverableContent content={message.content} entities={message.entities} />
         </p>
         <span className="text-xs text-muted-foreground mt-1 block">
           {formatTime(message.timestamp)}
