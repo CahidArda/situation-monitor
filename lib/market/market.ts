@@ -46,10 +46,11 @@ async function getMarketSeed(): Promise<number> {
 }
 
 async function getSectorIndexes(): Promise<Record<string, number>> {
+  const results = await Promise.all(
+    SECTORS.map((s) => getSectorIndex(s.id)),
+  );
   const indexes: Record<string, number> = {};
-  for (const sector of SECTORS) {
-    indexes[sector.id] = await getSectorIndex(sector.id);
-  }
+  SECTORS.forEach((s, i) => { indexes[s.id] = results[i]; });
   return indexes;
 }
 
@@ -58,16 +59,25 @@ async function getPreviousPrices(): Promise<Record<string, number>> {
   const tick = await getMarketTick();
   if (tick <= 1) return prices;
 
-  // Read second-to-last stored prices from history (the previous tick)
-  for (const c of COMPANIES) {
-    const prev = await redis.zrange<string[]>(`market:history:company:${c.id}`, -2, -2);
+  // Read all previous prices in parallel
+  const [companyResults, commodityResults, globalPrev] = await Promise.all([
+    Promise.all(COMPANIES.map((c) =>
+      redis.zrange<string[]>(`market:history:company:${c.id}`, -2, -2),
+    )),
+    Promise.all(COMMODITIES.map((c) =>
+      redis.zrange<string[]>(`market:history:commodity:${c.id}`, -2, -2),
+    )),
+    redis.zrange<string[]>("market:history:global", -2, -2),
+  ]);
+
+  COMPANIES.forEach((c, i) => {
+    const prev = companyResults[i];
     if (prev && prev.length > 0) prices[c.id] = Number(prev[0]);
-  }
-  for (const c of COMMODITIES) {
-    const prev = await redis.zrange<string[]>(`market:history:commodity:${c.id}`, -2, -2);
+  });
+  COMMODITIES.forEach((c, i) => {
+    const prev = commodityResults[i];
     if (prev && prev.length > 0) prices[c.id] = Number(prev[0]);
-  }
-  const globalPrev = await redis.zrange<string[]>("market:history:global", -2, -2);
+  });
   if (globalPrev && globalPrev.length > 0) prices["__global"] = Number(globalPrev[0]);
 
   return prices;

@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useMarketPrices } from "@/hooks/use-market";
 import { useMarketStore } from "@/stores/market";
 import { COMPANIES } from "@/lib/market/companies";
 import { GlobalIndexBar } from "./global-index-bar";
@@ -13,8 +12,7 @@ import { CompanyDetail } from "./company-detail";
 
 export function MarketTab() {
   const searchParams = useSearchParams();
-  const { data, isLoading } = useMarketPrices();
-  const setPrices = useMarketStore((s) => s.setPrices);
+  // Prices are polled globally in MainLayout — just read from store
   const companies = useMarketStore((s) => s.companies);
   const commodities = useMarketStore((s) => s.commodities);
   const sectors = useMarketStore((s) => s.sectors);
@@ -23,10 +21,6 @@ export function MarketTab() {
   const selectedSectorIds = useMarketStore((s) => s.selectedSectorIds);
   const selectCompany = useMarketStore((s) => s.selectCompany);
   const toggleSector = useMarketStore((s) => s.toggleSector);
-
-  useEffect(() => {
-    if (data) setPrices(data);
-  }, [data, setPrices]);
 
   // Read query params for deep linking
   const tickerParam = searchParams.get("ticker");
@@ -61,7 +55,7 @@ export function MarketTab() {
     }
   }
 
-  if (isLoading && companies.length === 0) {
+  if (companies.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

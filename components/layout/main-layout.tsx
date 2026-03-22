@@ -13,16 +13,25 @@ import { FeedPanel } from "@/components/feed/feed-panel";
 import { useActiveTab } from "@/hooks/use-tab";
 import { useTick } from "@/hooks/use-tick";
 import { useDMConversations } from "@/hooks/use-dms";
+import { useMarketPrices } from "@/hooks/use-market";
 import { useDMStore } from "@/stores/dms";
+import { useMarketStore } from "@/stores/market";
 import { playNotificationSound } from "@/lib/sounds";
 
 function MainLayoutInner() {
   const { activeTab, setActiveTab } = useActiveTab();
   const totalUnread = useDMStore((s) => s.getTotalUnread());
   const setConversations = useDMStore((s) => s.setConversations);
+  const setPrices = useMarketStore((s) => s.setPrices);
 
   // Poll the tick endpoint every 10s to keep the simulation alive
   useTick();
+
+  // Poll market prices globally so ticker tape works on any tab
+  const { data: marketData } = useMarketPrices();
+  useEffect(() => {
+    if (marketData) setPrices(marketData);
+  }, [marketData, setPrices]);
 
   // Poll DM conversations globally so unread badge updates on any tab
   const { data: dmData } = useDMConversations();
