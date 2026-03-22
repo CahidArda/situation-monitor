@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useMarketPrices } from "@/hooks/use-market";
@@ -40,11 +40,13 @@ export function MarketTab() {
     }
   }, [tickerParam, companies, selectCompany]);
 
+  const sectorInitialized = useRef(false);
   useEffect(() => {
-    if (sectorParam && !selectedSectorIds.includes(sectorParam)) {
+    if (sectorParam && !sectorInitialized.current) {
+      sectorInitialized.current = true;
       toggleSector(sectorParam);
     }
-  }, [sectorParam, selectedSectorIds, toggleSector]);
+  }, [sectorParam, toggleSector]);
 
   // Company detail view
   if (selectedCompanyId) {
