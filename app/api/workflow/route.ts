@@ -1,6 +1,7 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { loadAllChains, selectSeedEvent, getEvent } from "@/lib/events/registry";
 import { incrementTick, setLastEventTime } from "@/lib/events/state";
+import { getTweetIndex, getNewsIndex, getDMIndex } from "@/lib/search";
 import type { EventResult } from "@/lib/interfaces/events";
 import type { WorkflowContext } from "@upstash/workflow";
 
@@ -34,6 +35,15 @@ export const { POST } = serve(async (ctx) => {
     const result = await event.handler(ctx, trigger.metadata);
     await executeFollowUps(ctx, result.followUpEvents);
   }
+
+  // Wait for all search indexes to finish processing new documents
+  await ctx.run("wait-indexing", async () => {
+    await Promise.all([
+      getTweetIndex().waitIndexing(),
+      getNewsIndex().waitIndexing(),
+      getDMIndex().waitIndexing(),
+    ]);
+  });
 });
 
 async function executeFollowUps(
